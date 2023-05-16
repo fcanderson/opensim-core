@@ -46,6 +46,7 @@
 #include <OpenSim/Simulation/SimbodyEngine/FreeJoint.h>
 #include <OpenSim/Simulation/StatesTrajectory.h>
 #include <OpenSim/Simulation/StatesTrajectoryReporter.h>
+#include <OpenSim/Simulation/StatesDocument.h>
 #include <OpenSim/Auxiliary/auxiliaryTestFunctions.h>
 #include "SimTKsimbody.h"
 
@@ -124,6 +125,7 @@ public:
     void test();
     void testParameters();
     void testSerialization();
+    void testStatesDocument();
     void printDiscreteVariableAbstractValue(const string& pathName,
         const AbstractValue& value) const;
     void testDiscreteVariables(State& state, const ForceSet& fSet);
@@ -591,6 +593,7 @@ test()
 
     testParameters();
     testSerialization();
+    testStatesDocument();
 }
 //_____________________________________________________________________________
 void
@@ -690,6 +693,12 @@ testSerialization() {
     SimTK_ASSERT_ALWAYS(pCopy == p,
         "Deserialized parameters are not equal to original parameters.");
 }
+//_____________________________________________________________________________
+void ExponentialContactTester::testStatesDocument() {
+    StatesDocument statesDoc;
+    statesDoc.test();
+}
+
 //_____________________________________________________________________________
 void
 ExponentialContactTester::
