@@ -1449,8 +1449,7 @@ public:
      * ```
      *
      * @param state State from which to get the value.
-     * @param pathName Specified path of the discrete variable in the Model
-     * heirarchy.
+     * @param pathName Specified path of the variable in the Model heirarchy.
      * @return Value of the discrete variable as a reference to an
      * AbstractValue.
      * @throws ComponentHasNoSystem if this Component has not been added to a
@@ -1544,10 +1543,8 @@ public:
     }
 
 
-
-
     //-------------------------------------------------------------------------
-    /* F.C.Anderson (May 2023)
+    /* F.C.Anderson (May 2023): Trajectory get/set methods are below here.
 
     Added methods for de/serialization of a time series of the SimTK::State
     for a Model by way of an OpenSim::StatesDocument, which utitilizes basic
@@ -1556,44 +1553,196 @@ public:
     (ModelingOption%s, StateVariable%s, and DiscreteVariable%s) are handled
     during both serialization and deserialization. In addition, because these
     methods are templatized, they have the flexibility to handle variables of
-    different types (e.g., bool, int, double, Vec3, Quaternion, etc.).
-    */
+    different types (e.g., bool, int, double, Vec3, Quaternion, etc.). */
 
     //_________________________________________________________________________
-    /** Based on a time series of SimTK::State objects, get the time series of
-    values of a specified state variable.
+    /** From a trajectory of SimTK::State objects, get the trajectory of
+    a specified state variable. Here, "trajectory" indicates a time-ordered
+    sequence of values.
 
-    The advantage of accessing a single specified variable is that acquisition
-    of the full time series only requires one string lookup.
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
 
-    This method is used by class OpenSim::StatesDocument to serialize an
-    OpenSim::StatesTrajectory. */
-    void getStateVariableTimeSeries(std::string& path,
-        const SimTK::Vector_<SimTK::State>& input, Vector_<double>& output) {
+    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
+    method to serialize a complete trajectory of states to a .ostates document.
 
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input Trajectory of SimTK::State objects.
+    @param output Trajectory of the specified variable. */
+    template<class T>
+    void getStateVariableTrajectory(std::string& pathName,
+        const SimTK::Vector_<SimTK::State>& input,
+        SimTK::Vector_<T>& output) const
+    {
+        // Clear the output Vector
+        output.clear();
 
+        // Prepare the output Vector
+        int n = input.size();
+        if(n<=0) return;
+        output.resize(n);
+
+        // Find the state variable
+        const StateVariable* var = traverseToStateVariable(pathName);
+
+        // Loop over input and set the output
+        for (int i = 0; i < n; ++i) {
+            output[i] = var->getValue(input[i]);
+        }
     }
 
     //_________________________________________________________________________
-    /** Based on a time series of SimTK::State objects, get the time series of
-    values of a specified state variable.
+    /** From a trajectory of SimTK::State objects, get the trajectory of
+    a specified discrete variable. Here, "trajectory" indicates a time-ordered
+    sequence of values.
 
-    The advantage of accessing one variable at a time is that acquisition of
-    the full time series only requires one string lookup.
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
 
-    This method is used by class OpenSim::StatesDocument to serialize an
-    OpenSim::StatesTrajectory. */
-    void setStateVariableTimeSeries(std::string& path,
-        const Vector_<double>& input, Vector_<SimTK::State>& output) {
+    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
+    method to serialize a complete trajectory of states to a .ostates document.
 
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input Trajectory of SimTK::State objects.
+    @param output Trajectory of the specified variable. */
+    template<class T>
+    void getDiscreteVariableTrajectory(std::string& pathName,
+        const SimTK::Vector_<SimTK::State>& input,
+        SimTK::Vector_<T>& output) const
+    {
+        // Clear the output Vector
+        output.clear();
 
+        // Prepare the output Vector
+        int n = input.size();
+        if(n<=0) return;
+        output.resize(n);
+
+        // Find the info struct for the discrete variable.
+        std::string dvName{""};
+        const Component* owner =
+            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+        std::map<std::string, DiscreteVariableInfo>::const_iterator it;
+        it = owner->_namedDiscreteVariableInfo.find(dvName);
+
+        // Not Found. Throw an exception.
+        if( it == owner->_namedDiscreteVariableInfo.end()) {
+            std::stringstream msg;
+            msg << "Component::getDiscreteVariable: ERR- name '" << pathName
+                << "' not found.\n "
+                << "for component '" << getName() << "' of type "
+                << getConcreteClassName();
+            throw Exception(msg.str(), __FILE__, __LINE__);
+        }
+
+        // Found. Loop over the input and set the output.
+        SimTK::DiscreteVariableIndex dvIndex = it->second.index;
+        const SimTK::Subsystem* subsystem = it->second.subsystem;
+        if (subsystem == nullptr) subsystem = &getDefaultSubsystem();
+        for (int i = 0; i < n; ++i) {
+            output[i] = SimTK::Value<T>::downcast(
+                subsystem->getDiscreteVariable(input[i], dvIndex));
+        }
+    }
+
+    //_________________________________________________________________________
+    /** From the trajectory of a specified state variable, set its
+    corresponding values in a trajectory of SimTK::State objects.  Here,
+    "trajectory" indicates a time-ordered sequence of values.
+
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
+
+    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
+    method to deserialize a complete trajectory of states from a .ostates
+    document.
+
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input Trajectory of the specified variable.
+    @param output Trajectory of SimTK::State objects with updated values for
+    the specified variable. */
+    template<class T>
+    void setStatesTrajectoryForStateVariable(std::string& pathName,
+        const SimTK::Vector_<T>& input,
+        SimTK::Vector_<SimTK::State>& output) const
+    {
+        // Check that the input and output sizes are the same.
+        // If not, throw an exception.
+        int ni = input.size();
+        int no = output.size();
+        SimTK_ASSERT2_ALWAYS(no == ni,
+            "Variable and State vectors are not the same size (%d != %d).",
+            ni, no);
+
+        // Find the state variable
+        const StateVariable* var = traverseToStateVariable(pathName);
+
+        // Loop over input values
+        for (int i = 0; i < ni; ++i) {
+            var->setValue(output[i], input[i]);
+        }
     }
 
 
+    //_________________________________________________________________________
+    /** From the trajectory of a specified discrete variable, set its
+    corresponding values in a trajectory of SimTK::State objects.  Here,
+    "trajectory" indicates a time-ordered sequence of values.
 
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
 
+    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
+    method to deserialize a complete trajectory of states from a .ostates
+    document.
 
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input Trajectory of the specified variable.
+    @param output Trajectory of SimTK::State objects with updated values for
+    the specified variable. */
+    template<class T>
+    void setStatesTrajectoryForDiscreteVariable(std::string& pathName,
+        const SimTK::Vector_<T>& input,
+        SimTK::Vector_<SimTK::State>& output) const
+    {
+        // Check that the input and output sizes are the same.
+        // If not, throw an exception.
+        int ni = input.size();
+        int no = output.size();
+        SimTK_ASSERT2_ALWAYS(no == ni,
+            "Variable and State vectors are not the same size (%d != %d).",
+            ni, no);
 
+        // Find the info struct for the discrete variable.
+        std::string dvName{""};
+        const Component* owner =
+            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+        std::map<std::string, DiscreteVariableInfo>::const_iterator it;
+        it = owner->_namedDiscreteVariableInfo.find(dvName);
+
+        // Not Found. Throw an exception.
+        if( it == owner->_namedDiscreteVariableInfo.end()) {
+            std::stringstream msg;
+            msg << "Component::getDiscreteVariable: ERR- name '" << pathName
+                << "' not found.\n "
+                << "for component '" << getName() << "' of type "
+                << getConcreteClassName();
+            throw Exception(msg.str(), __FILE__, __LINE__);
+        }
+
+        // Found. Loop over the input and set the output.
+        SimTK::DiscreteVariableIndex dvIndex = it->second.index;
+        const SimTK::Subsystem* subsystem = it->second.subsystem;
+        if (subsystem == nullptr) subsystem = &getDefaultSubsystem();
+        for (int i = 0; i < ni; ++i) {
+            SimTK::Value<T>::downcast(
+                subsystem->updDiscreteVariable(output[i], dvIndex)).upd()
+                = input[i];
+        }
+    }
+
+    /* F.C.Anderson (May 2023): Trajectory get/set methods are above here. */
+    //-------------------------------------------------------------------------
 
 
 
