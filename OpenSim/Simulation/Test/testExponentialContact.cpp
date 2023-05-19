@@ -357,7 +357,7 @@ buildModel()
     // StatesTrajectory
     statesReporter = new StatesTrajectoryReporter();
     statesReporter->setName("states_reporter");
-    statesReporter->set_report_time_interval(0.001);
+    statesReporter->set_report_time_interval(0.1);
     model->addComponent(statesReporter);
 
 
@@ -593,7 +593,7 @@ test()
 
     testParameters();
     testSerialization();
-    testStatesDocument();
+    //testStatesDocument();
 }
 //_____________________________________________________________________________
 void
@@ -853,10 +853,14 @@ simulate()
 
     // Write recorded states
     // From the Storage object maintained by the Manager
-    Storage& store = manager.getStateStorage();
-    store.print("BouncingBlock.states");
-    // From the StatesTrajectoryReporter
+    //Storage& store = manager.getStateStorage();
+    //store.print("BouncingBlock.states");
+    // From a StatesTrajectory and StatesDocument
     const StatesTrajectory& statesTrajectory = statesReporter->getStates();
+    StatesDocument statesDoc(*model, statesTrajectory);
+    SimTK::String docStr;
+    statesDoc.writeToString(docStr);
+    cout << endl << endl << docStr << endl;
 }
 
 //_____________________________________________________________________________

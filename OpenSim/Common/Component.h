@@ -1543,6 +1543,61 @@ public:
         }
     }
 
+
+
+
+    //-------------------------------------------------------------------------
+    /* F.C.Anderson (May 2023)
+
+    Added methods for de/serialization of a time series of the SimTK::State
+    for a Model by way of an OpenSim::StatesDocument, which utitilizes basic
+    XML for its file format (see SimTK::Xml). This approach is comprehensive
+    in that all categories of the variables held in the SimTK::State
+    (ModelingOption%s, StateVariable%s, and DiscreteVariable%s) are handled
+    during both serialization and deserialization. In addition, because these
+    methods are templatized, they have the flexibility to handle variables of
+    different types (e.g., bool, int, double, Vec3, Quaternion, etc.).
+    */
+
+    //_________________________________________________________________________
+    /** Based on a time series of SimTK::State objects, get the time series of
+    values of a specified state variable.
+
+    The advantage of accessing a single specified variable is that acquisition
+    of the full time series only requires one string lookup.
+
+    This method is used by class OpenSim::StatesDocument to serialize an
+    OpenSim::StatesTrajectory. */
+    void getStateVariableTimeSeries(std::string& path,
+        const SimTK::Vector_<SimTK::State>& input, Vector_<double>& output) {
+
+
+    }
+
+    //_________________________________________________________________________
+    /** Based on a time series of SimTK::State objects, get the time series of
+    values of a specified state variable.
+
+    The advantage of accessing one variable at a time is that acquisition of
+    the full time series only requires one string lookup.
+
+    This method is used by class OpenSim::StatesDocument to serialize an
+    OpenSim::StatesTrajectory. */
+    void setStateVariableTimeSeries(std::string& path,
+        const Vector_<double>& input, Vector_<SimTK::State>& output) {
+
+
+    }
+
+
+
+
+
+
+
+
+
+
     /**
      * A cache variable containing a value of type T.
      *

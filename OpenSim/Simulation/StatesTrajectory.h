@@ -47,7 +47,7 @@ class Model;
 // TODO See the bottom of this file for a class description to use once the
 // OSTATES file format is implemented.
 //
-/** 
+/**
  * \section StatesTrajectory
  * This class holds a sequence of SimTK::State%s. You can obtain a
  * StatesTrajectory during a simulation via the StatesTrajectoryReporter. You
@@ -75,7 +75,7 @@ class Model;
  * Python and MATLAB do not enforce constness and thus allow modifying the
  * trajectory.
  *
- * \subsection st_using_model Using with an OpenSim:: Model 
+ * \subsection st_using_model Using with an OpenSim:: Model
  * A StatesTrajectory is not very useful on its own, since neither the
  * trajectory nor the contained states know how the Component%s name the state
  * variables they create. You probably want to use the trajectory with an
@@ -151,7 +151,7 @@ public:
     /// @{
     /** Get a const reference to the state at a given index in the trajectory.
      * Here's an example of getting a state variable value from the first state
-     * in the trajectory: 
+     * in the trajectory:
      * @code{.cpp}
      * Model model("subject01.osim");
      * const StatesTrajectory states = getStatesTrajectorySomehow();
@@ -172,23 +172,27 @@ public:
         try {
             return m_states.at(index);
         } catch (const std::out_of_range&) {
-            OPENSIM_THROW(IndexOutOfRange, index, 0, 
+            OPENSIM_THROW(IndexOutOfRange, index, 0,
                           static_cast<unsigned>(m_states.size() - 1));
         }
     }
     /** Get a const reference to the first state in the trajectory. */
-    const SimTK::State& front() const { 
+    const SimTK::State& front() const {
         return m_states.front();
     }
     /** Get a const reference to the last state in the trajectory. */
-    const SimTK::State& back() const { 
+    const SimTK::State& back() const {
         return m_states.back();
     }
     /// @}
-    
+
     /** Iterator type that does not allow modifying the trajectory.
      * Most users do not need to understand what this is. */
     typedef std::vector<SimTK::State>::const_iterator const_iterator;
+
+    /** Iterator type that allows modifying the State object in the trajectory.
+    * Most users do not need to understand what this is. */
+    typedef std::vector<SimTK::State>::iterator iterator;
 
     /** A helper type to allow using range for loops over a subset of the
      * trajectory. */
@@ -203,12 +207,25 @@ public:
     /** Iterator pointing past the end of the trajectory. Allows using this
      * class in a range for loop. */
     const_iterator end() const { return m_states.cend(); }
+
+    /** Iterator pointing to first SimTK::State; allows modifying the
+    * states. */
+    iterator begin_nonconst() { return m_states.begin(); }
+    /** Iterator pointing past the end of the trajectory; allows modifying the
+    * states. */
+    iterator end_nonconst() { return m_states.end(); }
+
     /// @}
 
     /// @name Modify the contents of the trajectory
     /// @{
     /** Clear all the states in the trajectory. */
     void clear();
+    /** Reserve the memory capacity needed to hold a specified number of
+    State objects. */
+    void reserve(size_t numStateObjects) {
+        m_states.reserve(numStateObjects);
+    }
     /** Append a SimTK::State to this trajectory.
      * This function ensures that the time in the new SimTK::State is greater
      * than or equal to the time in the last SimTK::State in the trajectory.
@@ -337,11 +354,11 @@ public:
                 msg += "    " + missingStates[i] + "\n";
             }
             msg += "    " + missingStates.back();
-    
+
             addMessage(msg);
         }
     };
-    
+
     /** Thrown when trying to create a StatesTrajectory from states data, and
      * the data contains columns that do not correspond to continuous state
      * variables. */
@@ -360,7 +377,7 @@ public:
                 msg += "    " + extraStates[i] + "\n";
             }
             msg += "    " + extraStates.back();
-    
+
             addMessage(msg);
         }
     };
@@ -519,7 +536,7 @@ public:
  *
  * A SimTK::State object contains many different types of data, but only some
  * are saved into the OSTATES file:
- * 
+ *
  * type of data                 | saved in OSTATES?
  * ---------------------------- | -----------------
  * (continuous) state variables | yes

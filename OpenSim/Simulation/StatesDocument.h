@@ -26,6 +26,7 @@
 #include <SimTKsimbody.h>
 #include "osimSimulationDLL.h"
 #include "StatesTrajectory.h"
+#include <OpenSim/Simulation/Model/Model.h>
 
 
 namespace OpenSim {
@@ -156,39 +157,75 @@ public:
     // Construction
     //-------------------------------------------------------------------------
     /** Construct an empty states document. */
-    StatesDocument() {}
+    StatesDocument() {
+        doc.setIndentString("  ");
+        doc.setXmlCondenseWhiteSpace(true);
+    }
+
+    /** Construct a states document from a .ostates file. */
+    StatesDocument(std::string& pathname) {
+        doc.readFromFile(pathname);
+    }
+
+    /** Construct a states document from a StatesTrajectory. */
+    StatesDocument(const Model& model, const StatesTrajectory& trajectory);
 
     /** Destructor. */
     ~StatesDocument() {}
 
+
+    //-------------------------------------------------------------------------
+    // Trajectory Creation
+    //-------------------------------------------------------------------------
+    /** Create a StatesTrajectory based on this StatesDocument. */
+    StatesTrajectory createStatesTrajectory(const Model& model, bool assemble);
+
+
     //-------------------------------------------------------------------------
     // Serialization
     //-------------------------------------------------------------------------
-    void initialize();
-    void writeToFile(const std::string& fileName);
-    void writeToString();
+    /** Write the document to file. */
+    void writeToFile(const SimTK::String& pathname) {
+        doc.writeToFile(pathname);
+    }
+
+    /** Write the document to a specified string. */
+    void writeToString(SimTK::String& docStr, bool compact = false) {
+        doc.writeToString(docStr, compact);
+    }
+
 
     //-------------------------------------------------------------------------
-    // Accessors
-    //-------------------------------------------------------------------------
-
-
-    //-------------------------------------------------------------------------
-    // Test
+    // Testing
     //-------------------------------------------------------------------------
     void test();
 
-
-
-
 protected:
-    void clearXMLDocument();
+    // Helper methods for XML Document Construction
+    void formRootElement(const Model& m, const StatesTrajectory& traj);
+    void formTimeElement(const Model& m, const StatesTrajectory& traj);
+    void formContinuousElement(const Model& m, const StatesTrajectory& traj);
+    void formDiscreteElement(const Model& m, const StatesTrajectory& traj);
+    void formModelingElement(const Model& m, const StatesTrajectory& traj);
+    void appendVariableElement(const Model& m, const StatesTrajectory &traj,
+        std::string& path, SimTK::Xml::Element& parent);
 
+    // Helper methods for StatesTrajectory Creation
+    void initializeContinuousVariables(const Model& m, StatesTrajectory& traj);
+    void initializeDiscreteVariables(const Model& m, StatesTrajectory& traj);
+    void initializeModelingVariables(const Model& m, StatesTrajectory& traj);
+
+    // Testing
+    void prototype();
 
 private:
     // Member Variables
     SimTK::Xml::Document doc;
-
+    SimTK::Xml::Element rootElt;
+    SimTK::Xml::Element timeElt;
+    SimTK::Xml::Element continuousElt;
+    SimTK::Xml::Element discreteElt;
+    SimTK::Xml::Element modelingElt;
 
 }; // END of class StatesDocument
 
