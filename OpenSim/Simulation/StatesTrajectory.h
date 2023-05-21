@@ -208,11 +208,9 @@ public:
      * class in a range for loop. */
     const_iterator end() const { return m_states.cend(); }
 
-    /** Iterator pointing to first SimTK::State; allows modifying the
-    * states. */
+    /** Non-const iterator pointing to first SimTK::State. */
     iterator begin_nonconst() { return m_states.begin(); }
-    /** Iterator pointing past the end of the trajectory; allows modifying the
-    * states. */
+    /** Non-const iterator pointing past the end of the trajectory. */
     iterator end_nonconst() { return m_states.end(); }
 
     /// @}
