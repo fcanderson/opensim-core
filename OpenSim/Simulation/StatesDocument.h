@@ -25,9 +25,7 @@
 // INCLUDE
 #include <SimTKsimbody.h>
 #include "osimSimulationDLL.h"
-#include "StatesTrajectory.h"
 #include <OpenSim/Simulation/Model/Model.h>
-
 
 namespace OpenSim {
 
@@ -156,44 +154,31 @@ public:
     //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
-    /** Construct an empty states document. */
-    StatesDocument() {
-        doc.setIndentString("  ");
-        doc.setXmlCondenseWhiteSpace(true);
-    }
-
-    /** Construct a states document from a .ostates file. */
-    StatesDocument(std::string& pathname) {
-        doc.readFromFile(pathname);
-    }
-
-    /** Construct a states document from a StatesTrajectory. */
-    StatesDocument(const Model& model, const StatesTrajectory& trajectory);
-
-    /** Destructor. */
-    ~StatesDocument() {}
-
+    /** Construct an empty StatesDocument. */
+    StatesDocument() {}
 
     //-------------------------------------------------------------------------
-    // Trajectory Creation
+    // De/Serialization
     //-------------------------------------------------------------------------
-    /** Create a StatesTrajectory based on this StatesDocument. */
-    StatesTrajectory createStatesTrajectory(const Model& model, bool assemble);
+    /** Serialize to a file. */
+    void serializeToFile(const SimTK::String& filename,
+        const OpenSim::Model& model,
+        const SimTK::Array_<SimTK::State> & trajectory);
 
+    /** Serialize to a document string. */
+    void serializeToString(const OpenSim::Model& model,
+        const SimTK::Array_<SimTK::State> & trajectory,
+        SimTK::String& document);
 
-    //-------------------------------------------------------------------------
-    // Serialization
-    //-------------------------------------------------------------------------
-    /** Write the document to file. */
-    void writeToFile(const SimTK::String& pathname) {
-        doc.writeToFile(pathname);
-    }
+    /** Deserialize from a file. */
+    void deserializeFromFile(const SimTK::String& filename,
+        const OpenSim::Model& model,
+        SimTK::Array_<SimTK::State>& trajectory);
 
-    /** Write the document to a specified string. */
-    void writeToString(SimTK::String& docStr, bool compact = false) {
-        doc.writeToString(docStr, compact);
-    }
-
+    /** Deserialize from a document string. */
+    void deserializeFromString(const SimTK::String& filename,
+        const OpenSim::Model& model,
+        SimTK::Array_<SimTK::State>& trajectory);
 
     //-------------------------------------------------------------------------
     // Testing
@@ -201,19 +186,32 @@ public:
     void test();
 
 protected:
-    // Helper methods for XML Document Construction
-    void formRootElement(const Model& m, const StatesTrajectory& traj);
-    void formTimeElement(const Model& m, const StatesTrajectory& traj);
-    void formContinuousElement(const Model& m, const StatesTrajectory& traj);
-    void formDiscreteElement(const Model& m, const StatesTrajectory& traj);
-    void formModelingElement(const Model& m, const StatesTrajectory& traj);
-    void appendVariableElement(const Model& m, const StatesTrajectory &traj,
-        std::string& path, SimTK::Xml::Element& parent);
+    // Serialization Helpers.
+    void formDoc(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
+    void formRootElement(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
+    void formTimeElement(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
+    void formContinuousElement(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
+    void formDiscreteElement(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
+    void formModelingElement(const Model& m,
+        const SimTK::Array_<SimTK::State>& t);
 
-    // Helper methods for StatesTrajectory Creation
-    void initializeContinuousVariables(const Model& m, StatesTrajectory& traj);
-    void initializeDiscreteVariables(const Model& m, StatesTrajectory& traj);
-    void initializeModelingVariables(const Model& m, StatesTrajectory& traj);
+    // Deserialization Helpers.
+    void parseDoc(const Model& m, SimTK::Array_<SimTK::State>& t);
+    void findKeyDocElements();
+    void checkDocConsistencyWithModel(const Model& m) const;
+    void prepareStatesTrajectory(const Model& m,
+        SimTK::Array_<SimTK::State> &t);
+    void initializeContinuousVariables(const Model& m,
+        SimTK::Array_<SimTK::State> &t) const;
+    void initializeDiscreteVariables(const Model& m,
+        SimTK::Array_<SimTK::State> &t) const;
+    void initializeModelingVariables(const Model& m,
+        SimTK::Array_<SimTK::State> &t) const;
 
     // Testing
     void prototype();

@@ -1546,38 +1546,50 @@ public:
     //-------------------------------------------------------------------------
     /* F.C.Anderson (May 2023): Trajectory get/set methods are below here.
 
-    Added methods for de/serialization of a time series of the SimTK::State
-    for a Model by way of an OpenSim::StatesDocument, which utitilizes basic
-    XML for its file format (see SimTK::Xml). This approach is comprehensive
-    in that all categories of the variables held in the SimTK::State
-    (ModelingOption%s, StateVariable%s, and DiscreteVariable%s) are handled
-    during both serialization and deserialization. In addition, because these
-    methods are templatized, they have the flexibility to handle variables of
-    different types (e.g., bool, int, double, Vec3, Quaternion, etc.). */
+    Added methods that support comprehensive de/serialization of a time ordered
+    sequence of SimTK::State objects (i.e., Array_<State>). Such sequences
+    are typically gathered during the course of a simulation.
+
+    The approach is comprehensive in that all categories of the variables held
+    in the SimTK::State (ModelingOption%s, StateVariable%s, and
+    DiscreteVariable%s) are de/serialized. In addition, because these methods
+    are templatized, they have the flexibility to handle variables of different
+    types (e.g., bool, int, double, Vec3, Quaternion, etc.).
+
+    For the trajectory of SimTK::State objects, note that a SimTK::Array_<T>
+    container is used, as opposed to a SimTK::Vector_<T>. This is because
+    SimTK::State does not possess all of the computational characteristics
+    required by SimTK::Vector_<T>.
+
+    Note also that SimTK::Array_<T> is essentially equivalent to std::vector<T>
+    but with a number of advantages in terms of performance and binary
+    compatibility. */
 
     //_________________________________________________________________________
-    /** From a trajectory of SimTK::State objects, get the trajectory of
-    a specified state variable. Here, "trajectory" indicates a time-ordered
-    sequence of values.
+    /** From a trajectory of SimTK::State objects, get the corresponding
+    trajectory of a specified state variable of type T.
+
+    The word "trajectory" is used to connote that the State and variable
+    values are expected to be time-ordered, as will most commonly be the case.
+    To be clear, however, this charicteristic is not essential here and is not
+    checked during execution of this method.
 
     This method performs only a single string-based path lookup, so it is
     reasonably efficient.
 
-    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
-    method to serialize a complete trajectory of states to a .ostates document.
+    Class OpenSim::StatesDocument uses this method to serialize a state
+    trajectory to file.
 
     @param pathName Path name of the specified variable in the Model heirarchy.
-    @param input Trajectory of SimTK::State objects.
-    @param output Trajectory of the specified variable. */
+    @param input States trajectory.
+    @param output Corresponding trajectory of the specified variable. */
     template<class T>
-    void getStateVariableTrajectory(std::string& pathName,
-        const SimTK::Vector_<SimTK::State>& input,
+    void getStateVariableTrajectory(const std::string& pathName,
+        const SimTK::Array_<SimTK::State>& input,
         SimTK::Vector_<T>& output) const
     {
-        // Clear the output Vector
-        output.clear();
-
         // Prepare the output Vector
+        output.clear();
         int n = input.size();
         if(n<=0) return;
         output.resize(n);
@@ -1606,8 +1618,8 @@ public:
     @param input Trajectory of SimTK::State objects.
     @param output Trajectory of the specified variable. */
     template<class T>
-    void getDiscreteVariableTrajectory(std::string& pathName,
-        const SimTK::Vector_<SimTK::State>& input,
+    void getDiscreteVariableTrajectory(const std::string& pathName,
+        const SimTK::Array_<SimTK::State>& input,
         SimTK::Vector_<T>& output) const
     {
         // Clear the output Vector
@@ -1664,7 +1676,7 @@ public:
     template<class T>
     void setStatesTrajectoryForStateVariable(std::string& pathName,
         const SimTK::Vector_<T>& input,
-        SimTK::Vector_<SimTK::State>& output) const
+        SimTK::Array_<SimTK::State>& output) const
     {
         // Check that the input and output sizes are the same.
         // If not, throw an exception.
@@ -1703,7 +1715,7 @@ public:
     template<class T>
     void setStatesTrajectoryForDiscreteVariable(std::string& pathName,
         const SimTK::Vector_<T>& input,
-        SimTK::Vector_<SimTK::State>& output) const
+        SimTK::Array_<SimTK::State>& output) const
     {
         // Check that the input and output sizes are the same.
         // If not, throw an exception.

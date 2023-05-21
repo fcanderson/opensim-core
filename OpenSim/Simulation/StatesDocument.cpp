@@ -27,70 +27,49 @@ using namespace SimTK::Xml;
 using namespace std;
 using namespace OpenSim;
 
+//-----------------------------------------------------------------------------
+// Local Utility Functions
+//-----------------------------------------------------------------------------
 //_____________________________________________________________________________
-StatesDocument::
-StatesDocument(const Model& model, const StatesTrajectory& traj) {
+template<class T>
+void appendVarElt(const string& path, const Vector_<T>& val, Element& parent)
+{
+    // Create the variable element.
+    Element varElt("variable");
+    varElt.setAttributeValue("path", path);
 
+    // Append the variable element
+    varElt.setValueAs<Vector_<T>>(val, SimTK::LosslessNumDigitsReal);
+    parent.appendNode(varElt);
+}
+
+
+//-----------------------------------------------------------------------------
+// Serialize
+//-----------------------------------------------------------------------------
+//_____________________________________________________________________________
+void
+StatesDocument::
+serializeToFile(const String& filename,
+    const Model& model, const Array_<State> & traj)
+{
+    formDoc(model, traj);
+    doc.writeToFile(filename);
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+formDoc(const Model& model, const Array_<State>& traj) {
     formRootElement(model, traj);
     formTimeElement(model, traj);
     formContinuousElement(model, traj);
     formDiscreteElement(model, traj);
     formModelingElement(model, traj);
 }
-
-//_____________________________________________________________________________
-StatesTrajectory
-StatesDocument::
-createStatesTrajectory(const Model& model, bool assemble) {
-
-    bool success{false};
-
-    // Create a local model.
-    Model localModel(model);
-
-    // Create an empty StatesTrajectory.
-    StatesTrajectory traj;
-
-    // How many State objects should there be?
-    Element root = doc.getRootElement();
-    Attribute numStateAttr = root.getOptionalAttribute("numStateObjects");
-    int numStateObjects;
-    success = numStateAttr.getValue().tryConvertTo<int>(numStateObjects);
-    if (!success) {
-        cout << "Unable to get numStateObjects. Throw." << endl;
-    }
-
-    // Fill the StatesTrajectory with the correct number of State objects.
-    // At this point, none of the State objects has been initialized.
-    SimTK::State state = localModel.initSystem();
-    traj.reserve(numStateObjects);
-    for (int i = 0; i < numStateObjects; ++i) traj.append(state);
-
-    // Initialize the variables in each State object based on the contents
-    // of the XML document.
-    initializeContinuousVariables(model, traj);
-    initializeDiscreteVariables(model, traj);
-    initializeModelingVariables(model, traj);
-
-    // No assembly needed?
-    if (!assemble) return traj;
-
-    // Assemble
-    for (auto it = traj.begin_nonconst(); it!=traj.end_nonconst(); ++it) {
-        localModel.assemble(*it);
-    }
-
-    return traj;
-}
-
-
-//-----------------------------------------------------------------------------
-// Helper Methods for Construction
-//-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 void
 StatesDocument::
-formRootElement(const Model& model, const StatesTrajectory &traj) {
+formRootElement(const Model& model, const Array_<State>& traj) {
     // Set the tag of the root element and get an iterator to it.
     doc.setRootTag("ostates");
     rootElt = doc.getRootElement();
@@ -105,18 +84,18 @@ formRootElement(const Model& model, const StatesTrajectory &traj) {
 
     // Add attributes to the root node
     rootElt.setAttributeValue("model", model.getName());
-    rootElt.setAttributeValue("numStateObjects", std::to_string(traj.getSize()));
+    rootElt.setAttributeValue("numStateObjects", std::to_string(traj.size()));
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-formTimeElement(const Model& model, const StatesTrajectory &traj) {
+formTimeElement(const Model& model, const Array_<State>& traj) {
     // Form time element.
     timeElt = Element("time");
     rootElt.appendNode(timeElt);
 
     // Get time values from the StatesTrajectory
-    int n = (int)traj.getSize();
+    int n = (int)traj.size();
     SimTK::Vector_<double> time(n);
     for (int i = 0; i < n; ++i) {
         time[i] = traj[i].getTime();
@@ -129,73 +108,161 @@ formTimeElement(const Model& model, const StatesTrajectory &traj) {
 //_____________________________________________________________________________
 void
 StatesDocument::
-formContinuousElement(const Model& model, const StatesTrajectory &traj) {
+formContinuousElement(const Model& model, const Array_<State>& traj) {
     // Form continuous element.
     continuousElt = Element("continuous");
     rootElt.appendNode(continuousElt);
 
-    // Get a list of all state variables (continuous states) from the model.
-    // Each state variable will have its own element.
+    // Get a list of all state variables names from the model.
     OpenSim::Array<std::string> paths = model.getStateVariableNames();
 
-    // Append each variable element as a child to continuousElt.
+    // Loop over the names.
+    // Get the vector of values of each and append as a child element.
     int n = paths.getSize();
     for (int i = 0; i < n; ++i) {
-        appendVariableElement(model, traj, paths[i], continuousElt);
+        Vector_<double> val;
+        model.getStateVariableTrajectory<double>(paths[i], traj, val);
+        appendVarElt<double>(paths[i], val, continuousElt);
     }
-
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-formDiscreteElement(const Model& model, const StatesTrajectory &traj) {
+formDiscreteElement(const Model& model, const Array_<State>& traj) {
+    // Form discrete element.
+    continuousElt = Element("discrete");
+    rootElt.appendNode(discreteElt);
 
+    // Get a list of all discrete variable names from the model.
+    OpenSim::Array<std::string> paths = model.getDiscreteVariableNames();
+
+    // Loop over the names.
+    // Get the vector of values for each and append as a child element.
+    int n = paths.getSize();
+    for (int i = 0; i < n; ++i) {
+        Vector_<double> val;
+        model.getDiscreteVariableTrajectory<double>(paths[i], traj, val);
+        appendVarElt<double>(paths[i], val, continuousElt);
+    }
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-formModelingElement(const Model& model, const StatesTrajectory &traj) {
+formModelingElement(const Model& model, const Array_<State>& traj) {
 
 }
+
+
+//-----------------------------------------------------------------------------
+// Deserialize
+//-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 void
 StatesDocument::
-appendVariableElement(const Model& model, const StatesTrajectory &traj,
-    std::string& path, Element& parent)
+deserializeFromFile(const SimTK::String& filename,
+    const Model& model, Array_<State>& traj)
 {
-    // Create the variable element.
-    Element varElt("variable");
-    varElt.setAttributeValue("path", path);
-
-    // Get the values from the StateTrajectory
-    Vector_<double> val;
-
-
-    // Append the variable element
-    varElt.setValueAs<Vector_<double>>(val, SimTK::LosslessNumDigitsReal);
-    parent.appendNode(varElt);
-}
-
-
-//-----------------------------------------------------------------------------
-// Helper Methods for StatesTrajectory Creation
-//-----------------------------------------------------------------------------
-//_____________________________________________________________________________
-void
-StatesDocument::
-initializeContinuousVariables(const Model& model, StatesTrajectory &traj) {
-
+    doc.readFromFile(filename);
+    parseDoc(model, traj);
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-initializeDiscreteVariables(const Model& model, StatesTrajectory &traj) {
+deserializeFromString(const SimTK::String& document,
+    const Model& model, Array_<State>& traj)
+{
+    doc.readFromString(document);
+    parseDoc(model, traj);
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+parseDoc(const Model& model, Array_<State>& traj) {
+    findKeyDocElements();
+    checkDocConsistencyWithModel(model);
+    initializeContinuousVariables(model, traj);
+    initializeDiscreteVariables(model, traj);
+    initializeModelingVariables(model, traj);
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+findKeyDocElements() {
+    // Root
+    rootElt = doc.getRootElement();
+
+    // Time
+    Array_<Element> timeElts = rootElt.getAllElements("time");
+    SimTK_ASSERT1_ALWAYS(timeElts.size() == 1,
+        "%d time elements found. Should only be 1.", timeElts.size());
+    timeElt = timeElts[0];
+
+    // Continuous
+    Array_<Element> contElts = rootElt.getAllElements("continuous");
+    SimTK_ASSERT1_ALWAYS(contElts.size() == 1,
+        "%d continuous elements found. Should only be 1.", contElts.size());
+    continuousElt = contElts[0];
+
+    // Discrete
+    Array_<Element> discElts = rootElt.getAllElements("discrete");
+    SimTK_ASSERT1_ALWAYS(discElts.size() == 1,
+        "%d discrete elements found. Should only be 1.", discElts.size());
+    discreteElt = discElts[0];
+
+    // Modeling
+    Array_<Element> modlElts = rootElt.getAllElements("modeling");
+    SimTK_ASSERT1_ALWAYS(modlElts.size() == 1,
+        "%d modeling elements found. Should only be 1.", modlElts.size());
+    modelingElt = modlElts[0];
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+checkDocConsistencyWithModel(const Model& model) const {
 
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-initializeModelingVariables(const Model& model, StatesTrajectory &traj) {
+prepareStatesTrajectory(const Model& model, Array_<State>& traj) {
+    // Create a local copy of the Model and get a default State.
+    Model localModel(model);
+    SimTK::State state = localModel.initSystem();
+
+    // How many State objects should there be?
+    Attribute numStateAttr = rootElt.getOptionalAttribute("numStateObjects");
+    int numStateObjects;
+    bool success = numStateAttr.getValue().tryConvertTo<int>(numStateObjects);
+    SimTK_ASSERT_ALWAYS(success,
+        "Unable to acquire number of State objects from root element.");
+    SimTK_ASSERT1_ALWAYS(numStateObjects > 0,
+        "Root element attribute numStateObjects=%d; should be > 0.",
+        numStateObjects);
+
+
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+initializeContinuousVariables(const Model& model,
+    SimTK::Array_<State>& traj) const
+{
+
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+initializeDiscreteVariables(const Model& model,
+    SimTK::Array_<State>& traj) const
+{
+
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+initializeModelingVariables(const Model& model,
+    SimTK::Array_<State>& traj) const
+{
 
 }
 
@@ -207,17 +274,18 @@ initializeModelingVariables(const Model& model, StatesTrajectory &traj) {
 void
 StatesDocument::
 test() {
-    // See directly below this method
+    // Make up some data and elements.
     prototype();
 
-    // To String
+    // Write to String
     SimTK::String docStr;
-    writeToString(docStr);
+    doc.writeToString(docStr);
     cout << endl << "Prototype StatesDocument -----" << endl;
     cout << docStr << endl;
 
-    // To File
-    writeToFile("C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test.ostates");
+    // Write to File
+    doc.writeToFile(
+        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test.ostates");
 }
 
 //_____________________________________________________________________________

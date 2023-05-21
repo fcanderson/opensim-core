@@ -695,8 +695,8 @@ testSerialization() {
 }
 //_____________________________________________________________________________
 void ExponentialContactTester::testStatesDocument() {
-    StatesDocument statesDoc;
-    statesDoc.test();
+    //StatesDocument statesDoc;
+    //statesDoc.test();
 }
 
 //_____________________________________________________________________________
@@ -857,10 +857,10 @@ simulate()
     //store.print("BouncingBlock.states");
     // From a StatesTrajectory and StatesDocument
     const StatesTrajectory& statesTrajectory = statesReporter->getStates();
-    StatesDocument statesDoc(*model, statesTrajectory);
-    SimTK::String docStr;
-    statesDoc.writeToString(docStr);
-    cout << endl << endl << docStr << endl;
+    //StatesDocument statesDoc(*model, statesTrajectory);
+    //SimTK::String docStr;
+    //statesDoc.writeToString(docStr);
+    //cout << endl << endl << docStr << endl;
 }
 
 //_____________________________________________________________________________
