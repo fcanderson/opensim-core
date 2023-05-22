@@ -33,7 +33,7 @@ using namespace OpenSim;
 //_____________________________________________________________________________
 template<class T>
 void appendVarElt(const string& path, const string& type,
-    const Array_<T>& val, Element& parent)
+    const Array_<T>& valArr, Element& parent)
 {
     // Create the variable element.
     Element varElt("variable");
@@ -41,7 +41,7 @@ void appendVarElt(const string& path, const string& type,
     varElt.setAttributeValue("type", type);
 
     // Append the variable element
-    varElt.setValueAs<Array_<T>>(val, SimTK::LosslessNumDigitsReal);
+    varElt.setValueAs<Array_<T>>(valArr, SimTK::LosslessNumDigitsReal);
     parent.appendNode(varElt);
 }
 
@@ -66,7 +66,7 @@ formDoc(const Model& model, const Array_<State>& traj) {
     formTimeElement(model, traj);
     formContinuousElement(model, traj);
     formDiscreteElement(model, traj);
-    formModelingElement(model, traj);
+    //formModelingElement(model, traj);
 }
 //_____________________________________________________________________________
 void
@@ -175,32 +175,32 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
             appendVarElt<double>(paths[i], "double", vArr, discreteElt);
         }
         else if(SimTK::Value<Vec2>::isA(v)) {
-            Array_<Value<Vec2>> vArr;
-            model.getDiscreteVariableTrajectory<Value<Vec2>>(
+            Array_<Vec2> vArr;
+            model.getDiscreteVariableTrajectory<Vec2>(
                 paths[i], traj, vArr);
             appendVarElt<Vec2>(paths[i], "Vec2", vArr, discreteElt);
         }
         else if(SimTK::Value<Vec3>::isA(v)) {
-            SimTK::Array_<Value<Vec3>> vArr;
-            model.getDiscreteVariableTrajectory<Value<Vec3>>(
+            Array_<Vec3> vArr;
+            model.getDiscreteVariableTrajectory<Vec3>(
                 paths[i], traj, vArr);
             appendVarElt<Vec3>(paths[i], "Vec3", vArr, discreteElt);
         }
         else if(SimTK::Value<Vec4>::isA(v)) {
-            Array_<Value<Vec4>> vArr;
-            model.getDiscreteVariableTrajectory<Value<Vec4>>(
+            Array_<Vec4> vArr;
+            model.getDiscreteVariableTrajectory<Vec4>(
                 paths[i], traj, vArr);
             appendVarElt<Vec4>(paths[i], "Vec4", vArr, discreteElt);
         }
         else if(SimTK::Value<Vec5>::isA(v)) {
-            Array_<Value<Vec5>> vArr;
-            model.getDiscreteVariableTrajectory<Value<Vec5>>(
+            Array_<Vec5> vArr;
+            model.getDiscreteVariableTrajectory<Vec5>(
                 paths[i], traj, vArr);
             appendVarElt<Vec5>(paths[i], "Vec5", vArr, discreteElt);
         }
         else if(SimTK::Value<Vec6>::isA(v)) {
-            Array_<Value<Vec6>> vArr;
-            model.getDiscreteVariableTrajectory<Value<Vec6>>(
+            Array_<Vec6> vArr;
+            model.getDiscreteVariableTrajectory<Vec6>(
                 paths[i], traj, vArr);
             appendVarElt<Vec6>(paths[i], "Vec6", vArr, discreteElt);
         }
@@ -209,6 +209,7 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
             SimTK_ASSERT(false, msg.c_str());
         }
     }
+
 }
 //_____________________________________________________________________________
 void
