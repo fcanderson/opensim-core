@@ -32,9 +32,12 @@ namespace OpenSim {
 //=============================================================================
 // StatesDocument
 //=============================================================================
-/** Class StatesDocument provides a comprehensive means of serializing and
-deserializing the time sequence of states held in an OpenSim::StatesTrajectory.
+/** Class StatesDocument provides a means of serializing and deserializing a
+complete time sequence of states.
 Basic XML is used as the serialization format (@See SimTK::Xml).
+
+Upon construction, a StatesDocument object can be relied upon to contain
+a complete XML document.
 
 An OpenSim::StatesTrajectory is a time-ordered SimTK::Vector of SimTK::State%s
 (i.e., Vector<State>), along with a number of helpful methods for accessing
@@ -153,30 +156,35 @@ public:
     //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
-    /** Construct an empty StatesDocument. */
-    StatesDocument() {}
+    /** Construct from file. */
+    StatesDocument(const SimTK::String& filename) {
+        doc.readFromFile(filename);
+    }
+
+    /** Construct from a document string. */
+    StatesDocument(const char* xmlDocument) {
+        doc.readFromString(xmlDocument);
+    }
+
+    /** Construct from states trajectory. */
+    StatesDocument(const OpenSim::Model& model,
+        const SimTK::Array_<SimTK::State>& trajectory);
 
     //-------------------------------------------------------------------------
-    // De/Serialization
+    // Serialization and Deserialization
     //-------------------------------------------------------------------------
     /** Serialize to a file. */
-    void serializeToFile(const SimTK::String& filename,
-        const OpenSim::Model& model,
-        const SimTK::Array_<SimTK::State> & trajectory);
+    void serializeToFile(const SimTK::String& filename) {
+        doc.writeToFile(filename);
+    }
 
     /** Serialize to a document string. */
-    void serializeToString(const OpenSim::Model& model,
-        const SimTK::Array_<SimTK::State> & trajectory,
-        SimTK::String& document);
+    void serializeToString(SimTK::String& xmlDocument, bool compact = false) {
+        doc.writeToString(xmlDocument, compact);
+    }
 
-    /** Deserialize from a file. */
-    void deserializeFromFile(const SimTK::String& filename,
-        const OpenSim::Model& model,
-        SimTK::Array_<SimTK::State>& trajectory);
-
-    /** Deserialize from a document string. */
-    void deserializeFromString(const SimTK::String& filename,
-        const OpenSim::Model& model,
+    /** Deserialize to a states trajectory. */
+    void deserialize(const OpenSim::Model& model,
         SimTK::Array_<SimTK::State>& trajectory);
 
     //-------------------------------------------------------------------------

@@ -46,17 +46,18 @@ void appendVarElt(const string& path, const string& type,
 }
 
 //-----------------------------------------------------------------------------
-// Serialize
+// Construction
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
-void
 StatesDocument::
-serializeToFile(const String& filename,
-    const Model& model, const Array_<State> & traj)
+StatesDocument(const Model& model, const Array_<State>& trajectory)
 {
-    formDoc(model, traj);
-    doc.writeToFile(filename);
+    formDoc(model, trajectory);
 }
+
+//-----------------------------------------------------------------------------
+// Serialize
+//-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 void
 StatesDocument::
@@ -223,19 +224,7 @@ formModelingElement(const Model& model, const Array_<State>& traj) {
 //_____________________________________________________________________________
 void
 StatesDocument::
-deserializeFromFile(const SimTK::String& filename,
-    const Model& model, Array_<State>& traj)
-{
-    doc.readFromFile(filename);
-    parseDoc(model, traj);
-}
-//_____________________________________________________________________________
-void
-StatesDocument::
-deserializeFromString(const SimTK::String& document,
-    const Model& model, Array_<State>& traj)
-{
-    doc.readFromString(document);
+deserialize(const Model& model, Array_<State>& traj) {
     parseDoc(model, traj);
 }
 //_____________________________________________________________________________
