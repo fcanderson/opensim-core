@@ -857,11 +857,15 @@ simulate()
     //Storage& store = manager.getStateStorage();
     //store.print("BouncingBlock.states");
     // From a StatesTrajectory and StatesDocument
-    const StatesTrajectory& statesTrajectory = statesReporter->getStates();
-    //StatesDocument statesDoc(*model, statesTrajectory);
-    //SimTK::String docStr;
-    //statesDoc.writeToString(docStr);
-    //cout << endl << endl << docStr << endl;
+    const StatesTrajectory& statesTraj = statesReporter->getStates();
+    StatesDocument statesDoc = statesTraj.exportToStatesDocument(*model);
+    SimTK::String xmlDoc;
+    statesDoc.serializeToString(xmlDoc);
+    cout << endl << endl;
+    cout << xmlDoc << endl;
+    SimTK::String filename;
+    filename = "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test.ostates";
+    statesDoc.serializeToFile(filename);
 }
 
 //_____________________________________________________________________________
