@@ -160,7 +160,7 @@ public:
      * @endcode
      * This function does not check if the index is larger than the size of
      * the trajectory; see get() if you want this check. */
-    const SimTK::State& operator[](size_t index) const {
+    const SimTK::State& operator[](unsigned int index) const {
         return m_states[index];
     }
     /** Get a const reference to the state at a given index in the trajectory.
@@ -168,7 +168,7 @@ public:
      * @throws IndexOutOfRange If the index is greater than the size of the
      *                         trajectory.
      */
-    const SimTK::State& get(size_t index) const {
+    const SimTK::State& get(unsigned int index) const {
         try {
             return m_states.at(index);
         } catch (const std::out_of_range&) {
@@ -188,11 +188,7 @@ public:
 
     /** Iterator type that does not allow modifying the trajectory.
      * Most users do not need to understand what this is. */
-    typedef std::vector<SimTK::State>::const_iterator const_iterator;
-
-    /** Iterator type that allows modifying the State object in the trajectory.
-    * Most users do not need to understand what this is. */
-    typedef std::vector<SimTK::State>::iterator iterator;
+    typedef SimTK::Array_<SimTK::State>::const_iterator const_iterator;
 
     /** A helper type to allow using range for loops over a subset of the
      * trajectory. */
@@ -208,11 +204,6 @@ public:
      * class in a range for loop. */
     const_iterator end() const { return m_states.cend(); }
 
-    /** Non-const iterator pointing to first SimTK::State. */
-    iterator begin_nonconst() { return m_states.begin(); }
-    /** Non-const iterator pointing past the end of the trajectory. */
-    iterator end_nonconst() { return m_states.end(); }
-
     /// @}
 
     /// @name Modify the contents of the trajectory
@@ -221,7 +212,7 @@ public:
     void clear();
     /** Reserve the memory capacity needed to hold a specified number of
     State objects. */
-    void reserve(size_t numStateObjects) {
+    void reserve(unsigned int numStateObjects) {
         m_states.reserve(numStateObjects);
     }
     /** Append a SimTK::State to this trajectory.
@@ -306,7 +297,8 @@ public:
 
 private:
 
-    std::vector<SimTK::State> m_states;
+    SimTK::Array_<SimTK::State> m_states;
+
 
 public:
 

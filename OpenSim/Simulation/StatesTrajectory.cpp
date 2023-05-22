@@ -140,7 +140,7 @@ TimeSeriesTable StatesTrajectory::exportToTable(const Model& model,
     size_t numDepColumns = stateVars.size();
 
     // Fill up the table with the data.
-    for (size_t itime = 0; itime < getSize(); ++itime) {
+    for (unsigned int itime = 0; itime < getSize(); ++itime) {
         const auto& state = get(itime);
         TimeSeriesTable::RowVector row(static_cast<int>(numDepColumns));
 
@@ -248,7 +248,7 @@ StatesTrajectory StatesTrajectory::createFromStatesTable(
     // ===================
 
     // Reserve the memory we'll need to fit all the states.
-    states.m_states.reserve(table.getNumRows());
+    states.m_states.reserve((unsigned int)table.getNumRows());
 
     // Working memory for state. Initialize so that missing columns end up as
     // NaN.
