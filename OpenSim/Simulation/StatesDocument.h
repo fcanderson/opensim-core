@@ -185,9 +185,6 @@ public:
     void test();
 
 protected:
-    // Build supported type information
-    void buildSupportedTypes();
-
     // Serialization Helpers.
     void formDoc(const Model& model,
         const SimTK::Array_<SimTK::State>& traj);
