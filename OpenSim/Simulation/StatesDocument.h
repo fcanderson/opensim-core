@@ -150,7 +150,6 @@ additionally be imported from other sources.
 class OSIMSIMULATION_API StatesDocument {
 
 public:
-
     //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
@@ -186,44 +185,48 @@ public:
     void test();
 
 protected:
+    // Build supported type information
+    void buildSupportedTypes();
+
     // Serialization Helpers.
-    void formDoc(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
-    void formRootElement(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
-    void formTimeElement(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
-    void formContinuousElement(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
-    void formDiscreteElement(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
-    void formModelingElement(const Model& m,
-        const SimTK::Array_<SimTK::State>& t);
+    void formDoc(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
+    void formRootElement(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
+    void formTimeElement(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
+    void formContinuousElement(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
+    void formDiscreteElement(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
+    void formModelingElement(const Model& model,
+        const SimTK::Array_<SimTK::State>& traj);
 
     // Deserialization Helpers.
     void parseDoc(const Model& m, SimTK::Array_<SimTK::State>& t);
-    void findKeyDocElements();
-    void checkDocConsistencyWithModel(const Model& m) const;
-    void prepareStatesTrajectory(const Model& m,
-        SimTK::Array_<SimTK::State> &t);
-    void initializeContinuousVariables(const Model& m,
-        SimTK::Array_<SimTK::State> &t) const;
-    void initializeDiscreteVariables(const Model& m,
-        SimTK::Array_<SimTK::State> &t) const;
-    void initializeModelingVariables(const Model& m,
-        SimTK::Array_<SimTK::State> &t) const;
+    void checkDocConsistencyWithModel(const Model& model) const;
+    void prepareStatesTrajectory(const Model& model,
+        SimTK::Array_<SimTK::State> &traj);
+    void initializeTime(SimTK::Array_<SimTK::State> &traj);
+    void initializeContinuousVariables(const Model& model,
+        SimTK::Array_<SimTK::State> &traj);
+    void initializeDiscreteVariables(const Model& model,
+        SimTK::Array_<SimTK::State> &traj);
+    void initializeModelingVariables(const Model& model,
+        SimTK::Array_<SimTK::State> &traj);
 
     // Testing
     void prototype();
 
 private:
     // Member Variables
+    SimTK::Array_<SimTK::AbstractValue*> supportedTypes;
     SimTK::Xml::Document doc;
-    SimTK::Xml::Element rootElt;
-    SimTK::Xml::Element timeElt;
-    SimTK::Xml::Element continuousElt;
-    SimTK::Xml::Element discreteElt;
-    SimTK::Xml::Element modelingElt;
+    //SimTK::Xml::Element rootElt;
+    //SimTK::Xml::Element timeElt;
+    //SimTK::Xml::Element continuousElt;
+    //SimTK::Xml::Element discreteElt;
+    //SimTK::Xml::Element modelingElt;
 
 }; // END of class StatesDocument
 

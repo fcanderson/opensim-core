@@ -32,17 +32,18 @@ using namespace OpenSim;
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 template<class T>
-void appendVarElt(const string& path, const Vector_<T>& val, Element& parent)
+void appendVarElt(const string& path, const string& type,
+    const Array_<T>& val, Element& parent)
 {
     // Create the variable element.
     Element varElt("variable");
     varElt.setAttributeValue("path", path);
+    varElt.setAttributeValue("type", type);
 
     // Append the variable element
-    varElt.setValueAs<Vector_<T>>(val, SimTK::LosslessNumDigitsReal);
+    varElt.setValueAs<Array_<T>>(val, SimTK::LosslessNumDigitsReal);
     parent.appendNode(varElt);
 }
-
 
 //-----------------------------------------------------------------------------
 // Serialize
@@ -72,7 +73,7 @@ StatesDocument::
 formRootElement(const Model& model, const Array_<State>& traj) {
     // Set the tag of the root element and get an iterator to it.
     doc.setRootTag("ostates");
-    rootElt = doc.getRootElement();
+    Element rootElt = doc.getRootElement();
 
     // Insert a comment at the top level, just before the root node.
     string info = "OpenSim States Document (Version ";
@@ -91,7 +92,8 @@ void
 StatesDocument::
 formTimeElement(const Model& model, const Array_<State>& traj) {
     // Form time element.
-    timeElt = Element("time");
+    Element timeElt = Element("time");
+    Element rootElt = doc.getRootElement();
     rootElt.appendNode(timeElt);
 
     // Get time values from the StatesTrajectory
@@ -110,8 +112,9 @@ void
 StatesDocument::
 formContinuousElement(const Model& model, const Array_<State>& traj) {
     // Form continuous element.
-    continuousElt = Element("continuous");
-    rootElt.appendNode(continuousElt);
+    Element contElt = Element("continuous");
+    Element rootElt = doc.getRootElement();
+    rootElt.appendNode(contElt);
 
     // Get a list of all state variables names from the model.
     OpenSim::Array<std::string> paths = model.getStateVariableNames();
@@ -120,9 +123,9 @@ formContinuousElement(const Model& model, const Array_<State>& traj) {
     // Get the vector of values of each and append as a child element.
     int n = paths.getSize();
     for (int i = 0; i < n; ++i) {
-        Vector_<double> val;
+        Array_<double> val;
         model.getStateVariableTrajectory<double>(paths[i], traj, val);
-        appendVarElt<double>(paths[i], val, continuousElt);
+        appendVarElt<double>(paths[i], "double", val, contElt);
     }
 }
 //_____________________________________________________________________________
@@ -130,7 +133,8 @@ void
 StatesDocument::
 formDiscreteElement(const Model& model, const Array_<State>& traj) {
     // Form discrete element.
-    continuousElt = Element("discrete");
+    Element discreteElt = Element("discrete");
+    Element rootElt = doc.getRootElement();
     rootElt.appendNode(discreteElt);
 
     // Get a list of all discrete variable names from the model.
@@ -140,9 +144,69 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
     // Get the vector of values for each and append as a child element.
     int n = paths.getSize();
     for (int i = 0; i < n; ++i) {
-        Vector_<double> val;
-        model.getDiscreteVariableTrajectory<double>(paths[i], traj, val);
-        appendVarElt<double>(paths[i], val, continuousElt);
+        // Get a single discrete variable so that its type can be discerned
+        const AbstractValue &v =
+            model.getDiscreteVariableAbstractValue(traj[0],paths[i]);
+
+        // Append the vector according to type
+        if (SimTK::Value<bool>::isA(v)) {
+            Array_<bool> vArr;
+            model.getDiscreteVariableTrajectory<bool>(
+                paths[i], traj, vArr);
+            appendVarElt<bool>(paths[i], "bool", vArr, discreteElt);
+        }
+        else if(SimTK::Value<int>::isA(v)) {
+            Array_<int> vArr;
+            model.getDiscreteVariableTrajectory<int>(
+                paths[i], traj, vArr);
+            appendVarElt<int>(paths[i], "int", vArr, discreteElt);
+        }
+        else if(SimTK::Value<float>::isA(v)) {
+            Array_<float> vArr;
+            model.getDiscreteVariableTrajectory<float>(
+                paths[i], traj, vArr);
+            appendVarElt<float>(paths[i], "float", vArr, discreteElt);
+        }
+        else if(SimTK::Value<double>::isA(v)) {
+            Array_<double> vArr;
+            model.getDiscreteVariableTrajectory<double>(
+                paths[i], traj, vArr);
+            appendVarElt<double>(paths[i], "double", vArr, discreteElt);
+        }
+        else if(SimTK::Value<Vec2>::isA(v)) {
+            Array_<Value<Vec2>> vArr;
+            model.getDiscreteVariableTrajectory<Value<Vec2>>(
+                paths[i], traj, vArr);
+            appendVarElt<Vec2>(paths[i], "Vec2", vArr, discreteElt);
+        }
+        else if(SimTK::Value<Vec3>::isA(v)) {
+            SimTK::Array_<Value<Vec3>> vArr;
+            model.getDiscreteVariableTrajectory<Value<Vec3>>(
+                paths[i], traj, vArr);
+            appendVarElt<Vec3>(paths[i], "Vec3", vArr, discreteElt);
+        }
+        else if(SimTK::Value<Vec4>::isA(v)) {
+            Array_<Value<Vec4>> vArr;
+            model.getDiscreteVariableTrajectory<Value<Vec4>>(
+                paths[i], traj, vArr);
+            appendVarElt<Vec4>(paths[i], "Vec4", vArr, discreteElt);
+        }
+        else if(SimTK::Value<Vec5>::isA(v)) {
+            Array_<Value<Vec5>> vArr;
+            model.getDiscreteVariableTrajectory<Value<Vec5>>(
+                paths[i], traj, vArr);
+            appendVarElt<Vec5>(paths[i], "Vec5", vArr, discreteElt);
+        }
+        else if(SimTK::Value<Vec6>::isA(v)) {
+            Array_<Value<Vec6>> vArr;
+            model.getDiscreteVariableTrajectory<Value<Vec6>>(
+                paths[i], traj, vArr);
+            appendVarElt<Vec6>(paths[i], "Vec6", vArr, discreteElt);
+        }
+        else {
+            string msg = "Unrecognized type: " + v.getTypeName();
+            SimTK_ASSERT(false, msg.c_str());
+        }
     }
 }
 //_____________________________________________________________________________
@@ -178,42 +242,12 @@ deserializeFromString(const SimTK::String& document,
 void
 StatesDocument::
 parseDoc(const Model& model, Array_<State>& traj) {
-    findKeyDocElements();
     checkDocConsistencyWithModel(model);
+    prepareStatesTrajectory(model, traj);
+    initializeTime(traj);
     initializeContinuousVariables(model, traj);
     initializeDiscreteVariables(model, traj);
     initializeModelingVariables(model, traj);
-}
-//_____________________________________________________________________________
-void
-StatesDocument::
-findKeyDocElements() {
-    // Root
-    rootElt = doc.getRootElement();
-
-    // Time
-    Array_<Element> timeElts = rootElt.getAllElements("time");
-    SimTK_ASSERT1_ALWAYS(timeElts.size() == 1,
-        "%d time elements found. Should only be 1.", timeElts.size());
-    timeElt = timeElts[0];
-
-    // Continuous
-    Array_<Element> contElts = rootElt.getAllElements("continuous");
-    SimTK_ASSERT1_ALWAYS(contElts.size() == 1,
-        "%d continuous elements found. Should only be 1.", contElts.size());
-    continuousElt = contElts[0];
-
-    // Discrete
-    Array_<Element> discElts = rootElt.getAllElements("discrete");
-    SimTK_ASSERT1_ALWAYS(discElts.size() == 1,
-        "%d discrete elements found. Should only be 1.", discElts.size());
-    discreteElt = discElts[0];
-
-    // Modeling
-    Array_<Element> modlElts = rootElt.getAllElements("modeling");
-    SimTK_ASSERT1_ALWAYS(modlElts.size() == 1,
-        "%d modeling elements found. Should only be 1.", modlElts.size());
-    modelingElt = modlElts[0];
 }
 //_____________________________________________________________________________
 void
@@ -230,6 +264,7 @@ prepareStatesTrajectory(const Model& model, Array_<State>& traj) {
     SimTK::State state = localModel.initSystem();
 
     // How many State objects should there be?
+    Element rootElt = doc.getRootElement();
     Attribute numStateAttr = rootElt.getOptionalAttribute("numStateObjects");
     int numStateObjects;
     bool success = numStateAttr.getValue().tryConvertTo<int>(numStateObjects);
@@ -238,31 +273,65 @@ prepareStatesTrajectory(const Model& model, Array_<State>& traj) {
     SimTK_ASSERT1_ALWAYS(numStateObjects > 0,
         "Root element attribute numStateObjects=%d; should be > 0.",
         numStateObjects);
+}
+//_____________________________________________________________________________
+void
+StatesDocument::
+initializeTime(Array_<State>& traj) {
+    // Find the element
+    Element rootElt = doc.getRootElement();
+    Array_<Element> timeElts = rootElt.getAllElements("time");
+    SimTK_ASSERT1_ALWAYS(timeElts.size() == 1,
+        "%d time elements found. Should only be 1.", timeElts.size());
+    Element timeElt = timeElts[0];
 
+    // Get the values
+    Array_<double> timeArr;
+    timeElt.getValueAs<Array_<double>>(timeArr);
 
+    // Initialize the State objects
+    int n = traj.size();
+    for (int i = 0; i < n; ++i) traj[i].setTime(timeArr[i]);
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
 initializeContinuousVariables(const Model& model,
-    SimTK::Array_<State>& traj) const
+    SimTK::Array_<State>& traj)
 {
+    // Find the element
+    Element rootElt = doc.getRootElement();
+    Array_<Element> contElts = rootElt.getAllElements("discrete");
+    SimTK_ASSERT1_ALWAYS(contElts.size() == 1,
+        "%d continuous elements found. Should only be 1.", contElts.size());
+    Element discElt = contElts[0];
 
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
 initializeDiscreteVariables(const Model& model,
-    SimTK::Array_<State>& traj) const
+    SimTK::Array_<State>& traj)
 {
+    Element rootElt = doc.getRootElement();
+    Array_<Element> discElts = rootElt.getAllElements("discrete");
+    SimTK_ASSERT1_ALWAYS(discElts.size() == 1,
+        "%d discrete elements found. Should only be 1.", discElts.size());
+    Element discElt = discElts[0];
 
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
 initializeModelingVariables(const Model& model,
-    SimTK::Array_<State>& traj) const
+    SimTK::Array_<State>& traj)
 {
+    // Find the element
+    Element rootElt = doc.getRootElement();
+    Array_<Element> modlElts = rootElt.getAllElements("modeling");
+    SimTK_ASSERT1_ALWAYS(modlElts.size() == 1,
+        "%d modeling elements found. Should only be 1.", modlElts.size());
+    Element modlElt = modlElts[0];
 
 }
 
@@ -341,14 +410,14 @@ prototype() {
     continuousElt.appendNode(hipElt);
 
     // Elastic Anchor Point
-    SimTK::Vector_<Vec3> anchor(num);
+    SimTK::Array_<Vec3> anchor(num);
     for (i = 0; i < num; ++i) {
         Vec3 val(0.0, 1.10000000001, 1.200000000000002);
         anchor[i] = ((double)i) * val;
     }
     Xml::Element anchorElt("variable");
     anchorElt.setAttributeValue("path", "/forceset/EC0/anchor");
-    anchorElt.setValueAs<Vector_<Vec3>>(anchor, SimTK::LosslessNumDigitsReal);
+    anchorElt.setValueAs<Array_<Vec3>>(anchor, SimTK::LosslessNumDigitsReal);
     discreteElt.appendNode(anchorElt);
 
     // Now -- Getting Vectors out!
@@ -361,8 +430,8 @@ prototype() {
     hipElt.getValueAs<Vector_<double>>(qOut);
     cout << endl << "hipOut: " << qOut << endl;
     // Anchor
-    Vector_<Vec3> anchorOut;
-    anchorElt.getValueAs<Vector_<Vec3>>(anchorOut);
+    Array_<Vec3> anchorOut;
+    anchorElt.getValueAs<Array_<Vec3>>(anchorOut);
     cout << endl << "anchorOut: " << anchorOut << endl;
 
     // Asserts

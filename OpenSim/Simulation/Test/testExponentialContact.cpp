@@ -705,7 +705,8 @@ ExponentialContactTester::
 printDiscreteVariableAbstractValue(const string& pathName,
     const AbstractValue& value) const
 {
-    cout << pathName << " = ";
+    cout << pathName << " = type{" << value.getTypeName() << "} ";
+    cout << value << " = ";
 
     // Switch depending on the type
     if (SimTK::Value<double>::isA(value)) {

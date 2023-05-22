@@ -1569,8 +1569,8 @@ public:
     /** From a trajectory of SimTK::State objects, get the corresponding
     trajectory of a specified state variable of type T.
 
-    The word "trajectory" is used to connote that the State and variable
-    values are expected to be time-ordered, as will most commonly be the case.
+    The word "trajectory" connotes that the State and variable values are
+    expected to be time-ordered, which will most commonly be the case.
     To be clear, however, this charicteristic is not essential here and is not
     checked during execution of this method.
 
@@ -1586,7 +1586,7 @@ public:
     template<class T>
     void getStateVariableTrajectory(const std::string& pathName,
         const SimTK::Array_<SimTK::State>& input,
-        SimTK::Vector_<T>& output) const
+        SimTK::Array_<T>& output) const
     {
         // Prepare the output Vector
         output.clear();
@@ -1620,7 +1620,7 @@ public:
     template<class T>
     void getDiscreteVariableTrajectory(const std::string& pathName,
         const SimTK::Array_<SimTK::State>& input,
-        SimTK::Vector_<T>& output) const
+        SimTK::Array_<T>& output) const
     {
         // Clear the output Vector
         output.clear();
@@ -1628,7 +1628,7 @@ public:
         // Prepare the output Vector
         int n = input.size();
         if(n<=0) return;
-        output.resize(n);
+        output.reserve(n);
 
         // Find the info struct for the discrete variable.
         std::string dvName{""};
@@ -1675,7 +1675,7 @@ public:
     the specified variable. */
     template<class T>
     void setStatesTrajectoryForStateVariable(std::string& pathName,
-        const SimTK::Vector_<T>& input,
+        const SimTK::Array_<T>& input,
         SimTK::Array_<SimTK::State>& output) const
     {
         // Check that the input and output sizes are the same.
@@ -1714,7 +1714,7 @@ public:
     the specified variable. */
     template<class T>
     void setStatesTrajectoryForDiscreteVariable(std::string& pathName,
-        const SimTK::Vector_<T>& input,
+        const SimTK::Array_<T>& input,
         SimTK::Array_<SimTK::State>& output) const
     {
         // Check that the input and output sizes are the same.
