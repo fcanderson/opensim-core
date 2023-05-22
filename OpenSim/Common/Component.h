@@ -1652,8 +1652,9 @@ public:
         const SimTK::Subsystem* subsystem = it->second.subsystem;
         if (subsystem == nullptr) subsystem = &getDefaultSubsystem();
         for (int i = 0; i < n; ++i) {
-            output[i] = SimTK::Value<T>::downcast(
+            Value<T> vVal = SimTK::Value<T>::downcast(
                 subsystem->getDiscreteVariable(input[i], dvIndex));
+            output.emplace_back(vVal.getValue<T>());
         }
     }
 
