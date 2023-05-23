@@ -168,7 +168,13 @@ public:
 
     /** Construct from states trajectory. */
     StatesDocument(const OpenSim::Model& model,
-        const SimTK::Array_<SimTK::State>& trajectory);
+        const SimTK::Array_<SimTK::State>& trajectory,
+        int precision = SimTK::LosslessNumDigitsReal);
+
+    //-------------------------------------------------------------------------
+    // Accessors
+    //-------------------------------------------------------------------------
+
 
     //-------------------------------------------------------------------------
     // Serialization and Deserialization
@@ -225,13 +231,9 @@ protected:
 
 private:
     // Member Variables
+    int precision{SimTK::LosslessNumDigitsReal};
     SimTK::Array_<SimTK::AbstractValue*> supportedTypes;
     SimTK::Xml::Document doc;
-    //SimTK::Xml::Element rootElt;
-    //SimTK::Xml::Element timeElt;
-    //SimTK::Xml::Element continuousElt;
-    //SimTK::Xml::Element discreteElt;
-    //SimTK::Xml::Element modelingElt;
 
 }; // END of class StatesDocument
 

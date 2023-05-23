@@ -26,14 +26,16 @@ using namespace SimTK;
 using namespace SimTK::Xml;
 using namespace std;
 using namespace OpenSim;
+using std::cout;
 
 //-----------------------------------------------------------------------------
 // Local Utility Functions
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 template<class T>
-void appendVarElt(const string& path, const string& type,
-    const Array_<T>& valArr, Element& parent)
+void
+appendVarElt(const string& path, const string& type,
+    const Array_<T>& valArr, Element& parent, int precision)
 {
     // Create the variable element.
     Element varElt("variable");
@@ -41,7 +43,7 @@ void appendVarElt(const string& path, const string& type,
     varElt.setAttributeValue("type", type);
 
     // Append the variable element
-    varElt.setValueAs<Array_<T>>(valArr, SimTK::LosslessNumDigitsReal);
+    varElt.setValueAs<Array_<T>>(valArr, precision);
     parent.appendNode(varElt);
 }
 
@@ -50,8 +52,17 @@ void appendVarElt(const string& path, const string& type,
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 StatesDocument::
-StatesDocument(const Model& model, const Array_<State>& trajectory)
+StatesDocument(const Model& model, const Array_<State>& trajectory,
+    int p)
 {
+    // Set ouput precisison (1 <= precision <= SimTK::LosslessNumDigitsReal)
+    if(p < 1)
+        precision = 1;
+    else if(p > SimTK::LosslessNumDigitsReal)
+        precision = SimTK::LosslessNumDigitsReal;
+
+    precision = 8; // Temporary.  Just for initial testing.
+
     formDoc(model, trajectory);
 }
 
@@ -84,9 +95,20 @@ formRootElement(const Model& model, const Array_<State>& traj) {
     Xml::node_iterator root_it = doc.node_begin(Xml::ElementNode);
     doc.insertTopLevelNodeBefore(root_it, comment);
 
+    // Date and time
+    const std::time_t now = std::time(nullptr);
+    const char *localeName = "C";
+    std::locale::global(std::locale(localeName));
+    char buf[64];
+    strftime(buf, sizeof buf, "%a %b %e %Y %H:%M:%S", std::localtime(&now));
+    SimTK::String datetime = buf;
+    cout << "datetime = " << datetime;
+
     // Add attributes to the root node
     rootElt.setAttributeValue("model", model.getName());
-    rootElt.setAttributeValue("numStateObjects", std::to_string(traj.size()));
+    rootElt.setAttributeValue("nTime", std::to_string(traj.size()));
+    rootElt.setAttributeValue("precision", std::to_string(precision));
+    rootElt.setAttributeValue("date", buf);
 }
 //_____________________________________________________________________________
 void
@@ -105,7 +127,6 @@ formTimeElement(const Model& model, const Array_<State>& traj) {
     }
 
     // Set the text value on the element
-    int precision = 14;
     timeElt.setValueAs<Vector_<double>>(time, precision);
 }
 //_____________________________________________________________________________
@@ -126,7 +147,7 @@ formContinuousElement(const Model& model, const Array_<State>& traj) {
     for (int i = 0; i < n; ++i) {
         Array_<double> val;
         model.getStateVariableTrajectory<double>(paths[i], traj, val);
-        appendVarElt<double>(paths[i], "double", val, contElt);
+        appendVarElt<double>(paths[i], "double", val, contElt, precision);
     }
 }
 //_____________________________________________________________________________
@@ -154,55 +175,64 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
             Array_<bool> vArr;
             model.getDiscreteVariableTrajectory<bool>(
                 paths[i], traj, vArr);
-            appendVarElt<bool>(paths[i], "bool", vArr, discreteElt);
+            appendVarElt<bool>(paths[i], "bool", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<int>::isA(v)) {
             Array_<int> vArr;
             model.getDiscreteVariableTrajectory<int>(
                 paths[i], traj, vArr);
-            appendVarElt<int>(paths[i], "int", vArr, discreteElt);
+            appendVarElt<int>(paths[i], "int", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<float>::isA(v)) {
             Array_<float> vArr;
             model.getDiscreteVariableTrajectory<float>(
                 paths[i], traj, vArr);
-            appendVarElt<float>(paths[i], "float", vArr, discreteElt);
+            appendVarElt<float>(paths[i], "float", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<double>::isA(v)) {
             Array_<double> vArr;
             model.getDiscreteVariableTrajectory<double>(
                 paths[i], traj, vArr);
-            appendVarElt<double>(paths[i], "double", vArr, discreteElt);
+            appendVarElt<double>(paths[i], "double", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<Vec2>::isA(v)) {
             Array_<Vec2> vArr;
             model.getDiscreteVariableTrajectory<Vec2>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec2>(paths[i], "Vec2", vArr, discreteElt);
+            appendVarElt<Vec2>(paths[i], "Vec2", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<Vec3>::isA(v)) {
             Array_<Vec3> vArr;
             model.getDiscreteVariableTrajectory<Vec3>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec3>(paths[i], "Vec3", vArr, discreteElt);
+            appendVarElt<Vec3>(paths[i], "Vec3", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<Vec4>::isA(v)) {
             Array_<Vec4> vArr;
             model.getDiscreteVariableTrajectory<Vec4>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec4>(paths[i], "Vec4", vArr, discreteElt);
+            appendVarElt<Vec4>(paths[i], "Vec4", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<Vec5>::isA(v)) {
             Array_<Vec5> vArr;
             model.getDiscreteVariableTrajectory<Vec5>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec5>(paths[i], "Vec5", vArr, discreteElt);
+            appendVarElt<Vec5>(paths[i], "Vec5", vArr, discreteElt,
+                precision);
         }
         else if(SimTK::Value<Vec6>::isA(v)) {
             Array_<Vec6> vArr;
             model.getDiscreteVariableTrajectory<Vec6>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec6>(paths[i], "Vec6", vArr, discreteElt);
+            appendVarElt<Vec6>(paths[i], "Vec6", vArr, discreteElt,
+                precision);
         }
         else {
             string msg = "Unrecognized type: " + v.getTypeName();
@@ -384,11 +414,11 @@ prototype() {
     // Time
     SimTK::Vector_<double> time(num);
     for (i = 0; i < num; ++i) { time[i] = 0.1 * SimTK::Pi * (double)i; }
-    timeElt.setValueAs<Vector_<double>>(time, SimTK::LosslessNumDigitsReal);
+    timeElt.setValueAs<Vector_<double>>(time, precision);
 
     // Experiment with output precision
     cout.unsetf(std::ios::floatfield);
-    cout << setprecision(SimTK::LosslessNumDigitsReal);
+    cout << setprecision(precision);
     cout << endl << time << endl << endl;
 
     // Hip Flexion
@@ -396,7 +426,7 @@ prototype() {
     for (i = 0; i < num; ++i) { q[i] = 1.0e-10 * SimTK::Pi * (double)i; }
     Xml::Element hipElt("variable");
     hipElt.setAttributeValue("path", "/jointset/hip/flexion/value");
-    hipElt.setValueAs<Vector_<double>>(q, SimTK::LosslessNumDigitsReal);
+    hipElt.setValueAs<Vector_<double>>(q, precision);
     continuousElt.appendNode(hipElt);
 
     // Elastic Anchor Point
@@ -407,7 +437,7 @@ prototype() {
     }
     Xml::Element anchorElt("variable");
     anchorElt.setAttributeValue("path", "/forceset/EC0/anchor");
-    anchorElt.setValueAs<Array_<Vec3>>(anchor, SimTK::LosslessNumDigitsReal);
+    anchorElt.setValueAs<Array_<Vec3>>(anchor, precision);
     discreteElt.appendNode(anchorElt);
 
     // Now -- Getting Vectors out!
