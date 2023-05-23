@@ -1592,14 +1592,14 @@ public:
         output.clear();
         int n = input.size();
         if(n<=0) return;
-        output.resize(n);
+        output.reserve(n);
 
         // Find the state variable
         const StateVariable* var = traverseToStateVariable(pathName);
 
         // Loop over input and set the output
         for (int i = 0; i < n; ++i) {
-            output[i] = var->getValue(input[i]);
+            output.emplace_back(var->getValue(input[i]));
         }
     }
 
