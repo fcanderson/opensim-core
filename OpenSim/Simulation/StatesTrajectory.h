@@ -345,8 +345,9 @@ public:
     * OpenSim::StatesTrajectoryReporter will be complete and valid.
     */
     OpenSim::StatesDocument
-    exportToStatesDocument(const OpenSim::Model& model) const {
-        return OpenSim::StatesDocument(model, m_states);
+    exportToStatesDocument(const OpenSim::Model& model,
+        int precision = SimTK::LosslessNumDigitsReal) const {
+        return OpenSim::StatesDocument(model, m_states, precision);
     }
 
 private:

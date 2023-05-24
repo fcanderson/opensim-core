@@ -858,7 +858,9 @@ simulate()
     //store.print("BouncingBlock.states");
     // From a StatesTrajectory and StatesDocument
     const StatesTrajectory& statesTraj = statesReporter->getStates();
-    StatesDocument statesDoc = statesTraj.exportToStatesDocument(*model);
+    int precision = 8;
+    StatesDocument statesDoc =
+        statesTraj.exportToStatesDocument(*model, precision);
     SimTK::String xmlDoc;
     statesDoc.serializeToString(xmlDoc);
     cout << endl << endl;
