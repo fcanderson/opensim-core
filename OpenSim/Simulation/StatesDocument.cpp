@@ -34,11 +34,11 @@ using std::cout;
 //_____________________________________________________________________________
 template<class T>
 void
-appendVarElt(const string& path, const string& type,
+appendVarElt(const string& path, const string& tag, const string& type,
     const Array_<T>& valArr, Element& parent, int precision)
 {
     // Create the variable element.
-    Element varElt("variable");
+    Element varElt(tag);
     varElt.setAttributeValue("path", path);
     varElt.setAttributeValue("type", type);
 
@@ -52,17 +52,10 @@ appendVarElt(const string& path, const string& type,
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 StatesDocument::
-StatesDocument(const Model& model, const Array_<State>& trajectory,
-    int p)
+StatesDocument(const Model& model, const Array_<State>& trajectory, int p)
 {
     // Set ouput precisison (1 <= precision <= SimTK::LosslessNumDigitsReal)
-    if(p < 1)
-        precision = 1;
-    else if(p > SimTK::LosslessNumDigitsReal)
-        precision = SimTK::LosslessNumDigitsReal;
-
-    precision = 8; // Temporary.  Just for initial testing.
-
+    precision = clamp(1, p, SimTK::LosslessNumDigitsReal);
     formDoc(model, trajectory);
 }
 
@@ -77,7 +70,7 @@ formDoc(const Model& model, const Array_<State>& traj) {
     formTimeElement(model, traj);
     formContinuousElement(model, traj);
     formDiscreteElement(model, traj);
-    //formModelingElement(model, traj);
+    formModelingElement(model, traj);
 }
 //_____________________________________________________________________________
 void
@@ -147,7 +140,7 @@ formContinuousElement(const Model& model, const Array_<State>& traj) {
     for (int i = 0; i < n; ++i) {
         Array_<double> val;
         model.getStateVariableTrajectory<double>(paths[i], traj, val);
-        appendVarElt<double>(paths[i], "double", val, contElt, precision);
+        appendVarElt<double>(paths[i], "variable", "double", val, contElt, precision);
     }
 }
 //_____________________________________________________________________________
@@ -175,64 +168,64 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
             Array_<bool> vArr;
             model.getDiscreteVariableTrajectory<bool>(
                 paths[i], traj, vArr);
-            appendVarElt<bool>(paths[i], "bool", vArr, discreteElt,
-                precision);
+            appendVarElt<bool>(paths[i], "variable", "bool", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<int>::isA(v)) {
             Array_<int> vArr;
             model.getDiscreteVariableTrajectory<int>(
                 paths[i], traj, vArr);
-            appendVarElt<int>(paths[i], "int", vArr, discreteElt,
-                precision);
+            appendVarElt<int>(paths[i], "variable", "int", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<float>::isA(v)) {
             Array_<float> vArr;
             model.getDiscreteVariableTrajectory<float>(
                 paths[i], traj, vArr);
-            appendVarElt<float>(paths[i], "float", vArr, discreteElt,
-                precision);
+            appendVarElt<float>(paths[i], "variable", "float", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<double>::isA(v)) {
             Array_<double> vArr;
             model.getDiscreteVariableTrajectory<double>(
                 paths[i], traj, vArr);
-            appendVarElt<double>(paths[i], "double", vArr, discreteElt,
-                precision);
+            appendVarElt<double>(paths[i], "variable", "double", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<Vec2>::isA(v)) {
             Array_<Vec2> vArr;
             model.getDiscreteVariableTrajectory<Vec2>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec2>(paths[i], "Vec2", vArr, discreteElt,
-                precision);
+            appendVarElt<Vec2>(paths[i], "variable", "Vec2", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<Vec3>::isA(v)) {
             Array_<Vec3> vArr;
             model.getDiscreteVariableTrajectory<Vec3>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec3>(paths[i], "Vec3", vArr, discreteElt,
-                precision);
+            appendVarElt<Vec3>(paths[i], "variable", "Vec3", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<Vec4>::isA(v)) {
             Array_<Vec4> vArr;
             model.getDiscreteVariableTrajectory<Vec4>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec4>(paths[i], "Vec4", vArr, discreteElt,
-                precision);
+            appendVarElt<Vec4>(paths[i], "variable", "Vec4", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<Vec5>::isA(v)) {
             Array_<Vec5> vArr;
             model.getDiscreteVariableTrajectory<Vec5>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec5>(paths[i], "Vec5", vArr, discreteElt,
-                precision);
+            appendVarElt<Vec5>(paths[i], "variable", "Vec5", vArr,
+                discreteElt, precision);
         }
         else if(SimTK::Value<Vec6>::isA(v)) {
             Array_<Vec6> vArr;
             model.getDiscreteVariableTrajectory<Vec6>(
                 paths[i], traj, vArr);
-            appendVarElt<Vec6>(paths[i], "Vec6", vArr, discreteElt,
-                precision);
+            appendVarElt<Vec6>(paths[i], "variable", "Vec6", vArr,
+                discreteElt, precision);
         }
         else {
             string msg = "Unrecognized type: " + v.getTypeName();
@@ -245,7 +238,23 @@ formDiscreteElement(const Model& model, const Array_<State>& traj) {
 void
 StatesDocument::
 formModelingElement(const Model& model, const Array_<State>& traj) {
+    // Form continuous element.
+    Element modelingElt = Element("modeling");
+    Element rootElt = doc.getRootElement();
+    rootElt.appendNode(modelingElt);
 
+    // Get a list of all modeling option names from the model.
+    OpenSim::Array<std::string> paths = model.getModelingOptionNames();
+
+    // Loop over the names.
+    // Get the vector of values of each and append as a child element.
+    int n = paths.getSize();
+    for (int i = 0; i < n; ++i) {
+        Array_<int> val;
+        model.getModelingOptionTrajectory<int>(paths[i], traj, val);
+        appendVarElt<int>(paths[i], "option", "int", val, modelingElt,
+            precision);
+    }
 }
 
 
