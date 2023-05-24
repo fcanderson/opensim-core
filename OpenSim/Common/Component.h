@@ -868,6 +868,14 @@ public:
      */
     Array<std::string> getDiscreteVariableNames() const;
 
+    /**
+    * Get the names of the modeling optinons maintained by the Component
+    * and its subcomponents.
+    * @throws ComponentHasNoSystem if this Component has not been added to a
+    *         System (i.e., if initSystem has not been called)
+    */
+    Array<std::string> getModelingOptionNames() const;
+
     /** @name Component Socket Access methods
         Access Sockets of this component by name. */
     //@{
@@ -1410,16 +1418,15 @@ public:
     // variable, not just its name.
 
     /**
-     * Based on a specified path, resolve the name of a discrete variable and
-     * the component that owns it (i.e., its parent).
+     * Based on a specified path, resolve the name of a variable and the
+     * component that owns it (i.e., its parent).
      *
-     * @param pathName Specified path of the discrete variable in the Model
-     * heirarchy.
-     * @param dvName Returned name of the discrete variable. This string is
-     * simply the last string in the specified pathName.
+     * @param pathName Specified path of the variable in the Model heirarchy.
+     * @param variableName Returned name of the discrete variable. This string
+     * is simply the last string in the specified pathName.
      * @return Pointer to the Component that owns the discrete variable.
      */
-    const Component* resolveDiscreteVariableNameAndOwner(
+    const Component* resolveVariableNameAndOwner(
             const std::string& pathName, std::string& dvName) const;
 
     /**
@@ -1548,11 +1555,11 @@ public:
 
     Added methods that support comprehensive de/serialization of a time ordered
     sequence of SimTK::State objects (i.e., Array_<State>). Such sequences
-    are typically gathered during the course of a simulation.
+    are typically gathered during the course of a simulation by a reporter.
 
     The approach is comprehensive in that all categories of the variables held
     in the SimTK::State (ModelingOption%s, StateVariable%s, and
-    DiscreteVariable%s) are de/serialized. In addition, because these methods
+    DiscreteVariable%s) are included. In addition, because these methods
     are templatized, they have the flexibility to handle variables of different
     types (e.g., bool, int, double, Vec3, Quaternion, etc.).
 
@@ -1633,15 +1640,15 @@ public:
         // Find the info struct for the discrete variable.
         std::string dvName{""};
         const Component* owner =
-            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+            resolveVariableNameAndOwner(pathName, dvName);
         std::map<std::string, DiscreteVariableInfo>::const_iterator it;
         it = owner->_namedDiscreteVariableInfo.find(dvName);
 
         // Not Found. Throw an exception.
         if( it == owner->_namedDiscreteVariableInfo.end()) {
             std::stringstream msg;
-            msg << "Component::getDiscreteVariable: ERR- name '" << pathName
-                << "' not found.\n "
+            msg << "Component::getDiscreteVariableTrajectory: ERR- '"
+                << pathName << "' not found.\n "
                 << "for component '" << getName() << "' of type "
                 << getConcreteClassName();
             throw Exception(msg.str(), __FILE__, __LINE__);
@@ -1657,6 +1664,75 @@ public:
             output.emplace_back(vVal.getValue<T>());
         }
     }
+
+    //_________________________________________________________________________
+    /** From a trajectory of SimTK::State objects, get the corresponding
+    trajectory of a specified modeling option of type T.
+
+    The word "trajectory" connotes that the State and option values are
+    expected to be time-ordered, which will most commonly be the case.
+    To be clear, however, this charicteristic is not essential here and is not
+    checked during execution of this method.
+
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
+
+    Class OpenSim::StatesDocument uses this method to serialize a state
+    trajectory to file.
+
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input States trajectory.
+    @param output Corresponding trajectory of the specified option. */
+    template<class T>
+    void getModelingOptionTrajectory(const std::string& pathName,
+        const SimTK::Array_<SimTK::State>& input,
+        SimTK::Array_<T>& output) const
+    {
+        // Prepare the output Vector
+        output.clear();
+        int n = input.size();
+        if(n<=0) return;
+        output.reserve(n);
+
+        // Find the info struct for the modeling option.
+        std::string moName{""};
+        const Component* owner =
+            resolveVariableNameAndOwner(pathName, moName);
+        std::map<std::string, ModelingOptionInfo>::const_iterator it;
+        it = owner->_namedModelingOptionInfo.find(moName);
+
+        // Not Found. Throw an exception.
+        if( it == owner->_namedModelingOptionInfo.end()) {
+            std::stringstream msg;
+            msg << "Component::getModelingOptionTrajectory: ERR- '"
+                << pathName
+                << "' not found.\n "
+                << "for component '" << getName() << "' of type "
+                << getConcreteClassName();
+            throw Exception(msg.str(), __FILE__, __LINE__);
+        }
+
+        // Found. Loop over the input and set the output.
+        // TODO: account for a non-default subsystem. This might occur
+        // when a Simbody subsytem allocates its modeling variables natively,
+        // external to class Component. For an example of how to handle
+        // modeling variables in a more general way, see how discrete variables
+        // are handled. In particular, search on _namedDiscreteVariableInfo
+        // and review the methods that utilize it.
+        // TODO: account for variable types other than int. This will
+        // likely not be necessary, as modeling options are almost always
+        // type bool or int and an int can be used to represent a bool.
+        // Again, for an example, see how discrete variables do this.
+        SimTK::DiscreteVariableIndex dvIndex = it->second.index;
+        const SimTK::Subsystem* subsystem = &getDefaultSubsystem();
+        for (int i = 0; i < n; ++i) {
+            Value<T> vVal = SimTK::Value<T>::downcast(
+                subsystem->getDiscreteVariable(input[i], dvIndex));
+            output.emplace_back(vVal.getValue<T>());
+        }
+    }
+
+
 
     //_________________________________________________________________________
     /** From the trajectory of a specified state variable, set its
@@ -3334,6 +3410,18 @@ private:
         return (int)_namedDiscreteVariableInfo.size();
     }
     Array<std::string> getDiscreteVariableNamesAddedByComponent() const;
+
+    // F. C. Anderson (May 2023)
+    // Added so that modeling options can be serialized and deserialized.
+    //
+    // Get the number of modeling options that the Component added to the
+    // underlying computational system. It includes the number of built-in
+    // modeling options exposed by this component. It represents the number
+    // of modeling options managed by this Component.
+    int getNumModelingOptionsAddedByComponent() const {
+        return (int)_namedModelingOptionInfo.size();
+    }
+    Array<std::string> getModelingOptionNamesAddedByComponent() const;
 
     const SimTK::DefaultSystemSubsystem& getDefaultSubsystem() const
         {   return getSystem().getDefaultSubsystem(); }

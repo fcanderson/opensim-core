@@ -611,6 +611,59 @@ addDiscreteVariable(const std::string& discreteVariableName,
         DiscreteVariableInfo(invalidatesStage, allocate);
 }
 
+
+
+
+
+
+
+//_____________________________________________________________________________
+// F. C. Anderson (May 2023)
+// Added so that modeling options can be serialized and deserialized.
+//
+// Get the names of modeling options maintained by the Component
+// and its subcomponents.
+Array<std::string> Component::getModelingOptionNames() const {
+    // Must have already called initSystem.
+    OPENSIM_THROW_IF_FRMOBJ(!hasSystem(), ComponentHasNoSystem);
+
+    Array<std::string> moNames = getModelingOptionNamesAddedByComponent();
+
+    for (int i = 0; i < moNames.size(); ++i) {
+        moNames[i] = (getAbsolutePathString() + "/" + moNames[i]);
+    }
+
+    for (auto& comp : getComponentList<Component>()) {
+        const std::string& pathName = comp.getAbsolutePathString(); // *this);
+        Array<std::string> subMONames =
+            comp.getModelingOptionNamesAddedByComponent();
+        for (int i = 0; i < subMONames.size(); ++i) {
+            moNames.append(pathName + "/" + subMONames[i]);
+        }
+    }
+
+    return moNames;
+}
+
+//_____________________________________________________________________________
+// F. C. Anderson (May 2023)
+// Added so that modeling options can be serialized and deserialized.
+Array<std::string> Component::getModelingOptionNamesAddedByComponent() const {
+    std::map<std::string, ModelingOptionInfo>::const_iterator it;
+    it = _namedModelingOptionInfo.begin();
+
+    Array<std::string> names("", (int)_namedModelingOptionInfo.size());
+
+    int i = 0;
+    while (it != _namedModelingOptionInfo.end()) {
+        names[i] = it->first;
+        it++;
+        i++;
+    }
+    return names;
+}
+
+
 // Get the value of a ModelingOption flag for this Component.
 int Component::
 getModelingOption(const SimTK::State& s, const std::string& name) const
@@ -1135,15 +1188,15 @@ setDiscreteVariableValue(SimTK::State& s, const std::string& name,
 
 //_____________________________________________________________________________
 // F. C. Anderson (May 2023)
-// Added so that a discrete variable can be accessed based on a specified path.
+// Added so that a variable can be accessed based on a specified path.
 const Component*
 Component::
-resolveDiscreteVariableNameAndOwner(const std::string& pathName,
-    std::string& dvName) const
+resolveVariableNameAndOwner(const std::string& pathName,
+    std::string& variableName) const
 {
     ComponentPath path{pathName};
     size_t nLevels = path.getNumPathLevels();
-    dvName = path.getSubcomponentNameAtLevel(nLevels - 1);
+    variableName = path.getSubcomponentNameAtLevel(nLevels - 1);
     const Component* owner = this;
     if (nLevels > 1) {
         // Need to traverse to the owner of the DV based on the path.
@@ -1169,7 +1222,7 @@ getDiscreteVariableAbstractValue(const SimTK::State& s,
     // Resolve the name of the DV and its owner.
     std::string dvName{""};
     const Component* owner =
-            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+            resolveVariableNameAndOwner(pathName, dvName);
 
     // Find the variable.
     std::map<std::string, DiscreteVariableInfo>::const_iterator it;
@@ -1219,7 +1272,7 @@ updDiscreteVariableAbstractValue(SimTK::State& s,
     // Resolve the name of the DV and its owner.
     std::string dvName{""};
     const Component* owner =
-            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+            resolveVariableNameAndOwner(pathName, dvName);
 
     std::map<std::string, DiscreteVariableInfo>::const_iterator it;
     it = owner->_namedDiscreteVariableInfo.find(dvName);
