@@ -223,7 +223,7 @@ protected:
         SimTK::Array_<SimTK::State> &traj);
     void initializeDiscreteVariables(const Model& model,
         SimTK::Array_<SimTK::State> &traj);
-    void initializeModelingVariables(const Model& model,
+    void initializeModelingOptions(const Model& model,
         SimTK::Array_<SimTK::State> &traj);
 
     // Testing

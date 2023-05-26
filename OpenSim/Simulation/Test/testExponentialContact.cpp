@@ -852,22 +852,23 @@ simulate()
     // Write the model to file
     //model->print("C:\\Users\\fcand\\Documents\\block.osim");
 
-    // Write recorded states
-    // From the Storage object maintained by the Manager
-    //Storage& store = manager.getStateStorage();
-    //store.print("BouncingBlock.states");
-    // From a StatesTrajectory and StatesDocument
+    // Serialize
     const StatesTrajectory& statesTraj = statesReporter->getStates();
-    int precision = 8;
-    StatesDocument statesDoc =
-        statesTraj.exportToStatesDocument(*model, precision);
-    SimTK::String xmlDoc;
-    statesDoc.serializeToString(xmlDoc);
-    cout << endl << endl;
-    cout << xmlDoc << endl;
-    SimTK::String filename;
-    filename = "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test.ostates";
-    statesDoc.serializeToFile(filename);
+    StatesDocument statesDocSe = statesTraj.exportToStatesDocument(*model);
+    SimTK::String filename01 =
+        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test01.ostates";
+    statesDocSe.serializeToFile(filename01);
+
+    // Deserialize
+    StatesDocument statesDocDe(filename01);
+    Array_<State> traj;
+    statesDocDe.deserialize(*model, traj);
+
+    // Reserialize
+    SimTK::String filename02 =
+        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test02.ostates";
+    StatesDocument statesDocRe(*model, traj);
+    statesDocRe.serializeToFile(filename02);
 }
 
 //_____________________________________________________________________________

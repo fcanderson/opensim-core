@@ -1572,6 +1572,8 @@ public:
     but with a number of advantages in terms of performance and binary
     compatibility. */
 
+    // GET METHODS -------------------------
+
     //_________________________________________________________________________
     /** From a trajectory of SimTK::State objects, get the corresponding
     trajectory of a specified state variable of type T.
@@ -1732,7 +1734,7 @@ public:
         }
     }
 
-
+    // SET METHODS -------------------------
 
     //_________________________________________________________________________
     /** From the trajectory of a specified state variable, set its
@@ -1751,7 +1753,7 @@ public:
     @param output Trajectory of SimTK::State objects with updated values for
     the specified variable. */
     template<class T>
-    void setStatesTrajectoryForStateVariable(std::string& pathName,
+    void setStatesTrajectoryForStateVariable(const std::string& pathName,
         const SimTK::Array_<T>& input,
         SimTK::Array_<SimTK::State>& output) const
     {
@@ -1760,7 +1762,7 @@ public:
         int ni = input.size();
         int no = output.size();
         SimTK_ASSERT2_ALWAYS(no == ni,
-            "Variable and State vectors are not the same size (%d != %d).",
+            "Variable and State arrays are not the same size (%d != %d).",
             ni, no);
 
         // Find the state variable
@@ -1771,7 +1773,6 @@ public:
             var->setValue(output[i], input[i]);
         }
     }
-
 
     //_________________________________________________________________________
     /** From the trajectory of a specified discrete variable, set its
@@ -1790,7 +1791,7 @@ public:
     @param output Trajectory of SimTK::State objects with updated values for
     the specified variable. */
     template<class T>
-    void setStatesTrajectoryForDiscreteVariable(std::string& pathName,
+    void setStatesTrajectoryForDiscreteVariable(const std::string& pathName,
         const SimTK::Array_<T>& input,
         SimTK::Array_<SimTK::State>& output) const
     {
@@ -1799,23 +1800,24 @@ public:
         int ni = input.size();
         int no = output.size();
         SimTK_ASSERT2_ALWAYS(no == ni,
-            "Variable and State vectors are not the same size (%d != %d).",
+            "Variable and State arrays are not the same size (%d != %d).",
             ni, no);
 
         // Find the info struct for the discrete variable.
         std::string dvName{""};
         const Component* owner =
-            resolveDiscreteVariableNameAndOwner(pathName, dvName);
+            resolveVariableNameAndOwner(pathName, dvName);
         std::map<std::string, DiscreteVariableInfo>::const_iterator it;
         it = owner->_namedDiscreteVariableInfo.find(dvName);
 
         // Not Found. Throw an exception.
         if( it == owner->_namedDiscreteVariableInfo.end()) {
             std::stringstream msg;
-            msg << "Component::getDiscreteVariable: ERR- name '" << pathName
+            msg << "Component::setStatesTrajectoryForDiscreteVariable: "
+                << "ERR- '" << pathName
                 << "' not found.\n "
-                << "for component '" << getName() << "' of type "
-                << getConcreteClassName();
+                << "for component '" << owner->getName() << "' of type "
+                << owner->getConcreteClassName();
             throw Exception(msg.str(), __FILE__, __LINE__);
         }
 
@@ -1826,6 +1828,63 @@ public:
         for (int i = 0; i < ni; ++i) {
             SimTK::Value<T>::downcast(
                 subsystem->updDiscreteVariable(output[i], dvIndex)).upd()
+                = input[i];
+        }
+    }
+
+    //_________________________________________________________________________
+    /** From the trajectory of a specified modeling option, set its
+    corresponding values in a trajectory of SimTK::State objects.  Here,
+    "trajectory" indicates a time-ordered sequence of values.
+
+    This method performs only a single string-based path lookup, so it is
+    reasonably efficient.
+
+    Both OpenSim::StatesTrajectory and OpenSim::StatesDocument rely on this
+    method to deserialize a complete trajectory of states from a .ostates
+    document.
+
+    @param pathName Path name of the specified variable in the Model heirarchy.
+    @param input Trajectory of the specified option.
+    @param output Trajectory of SimTK::State objects with updated values for
+    the specified option. */
+    template<class T>
+    void setStatesTrajectoryForModelingOption(const std::string& pathName,
+        const SimTK::Array_<T>& input,
+        SimTK::Array_<SimTK::State>& output) const
+    {
+        // Check that the input and output sizes are the same.
+        // If not, throw an exception.
+        int ni = input.size();
+        int no = output.size();
+        SimTK_ASSERT2_ALWAYS(no == ni,
+            "Option and State arrays are not the same size (%d != %d).",
+            ni, no);
+
+        // Find the info struct for the modeling option.
+        std::string moName{""};
+        const Component* owner =
+            resolveVariableNameAndOwner(pathName, moName);
+        std::map<std::string, ModelingOptionInfo>::const_iterator it;
+        it = owner->_namedModelingOptionInfo.find(moName);
+
+        // Not Found. Throw an exception.
+        if( it == owner->_namedModelingOptionInfo.end()) {
+            std::stringstream msg;
+            msg << "Component::setStatesTrajectoryForModelingOption: "
+                << "ERR - '" << pathName
+                << "' not found.\n "
+                << "for component '" << owner->getName() << "' of type "
+                << owner->getConcreteClassName();
+            throw Exception(msg.str(), __FILE__, __LINE__);
+        }
+
+        // Found. Loop over the input and set the output.
+        SimTK::DiscreteVariableIndex moIndex = it->second.index;
+        const SimTK::Subsystem* subsystem = &getDefaultSubsystem();
+        for (int i = 0; i < ni; ++i) {
+            SimTK::Value<T>::downcast(
+                subsystem->updDiscreteVariable(output[i], moIndex)).upd()
                 = input[i];
         }
     }

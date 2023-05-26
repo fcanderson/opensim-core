@@ -46,15 +46,70 @@ appendVarElt(const string& path, const string& tag, const string& type,
     varElt.setValueAs<Array_<T>>(valArr, precision);
     parent.appendNode(varElt);
 }
+//_____________________________________________________________________________
+template<class T>
+void
+initializeStatesForStateVariable(Element& varElt, const Model& model,
+    const string& path, Array_<State> & traj)
+{
+    // Interpret the Element value
+    Array_<T> vArr;
+    varElt.getValueAs<Array_<T>>(vArr);
+
+    // Check the sizes.
+    int n = vArr.size();
+    SimTK_ASSERT2_ALWAYS(n == traj.size(),
+        "Found %d values. Should match nTime = %d values.",
+        n, traj.size());
+
+    // Set variable in the States trajectory
+    model.setStatesTrajectoryForStateVariable<T>(path, vArr, traj);
+}
+//_____________________________________________________________________________
+template<class T>
+void
+initializeStatesForDiscreteVariable(Element& varElt, const Model& model,
+    const string& path, Array_<State> & traj)
+{
+    // Interpret the Element value
+    Array_<T> vArr;
+    varElt.getValueAs<Array_<T>>(vArr);
+
+    // Check the sizes.
+    int n = vArr.size();
+    SimTK_ASSERT2_ALWAYS(n == traj.size(),
+        "Found %d values. Should match nTime = %d values.",
+        n, traj.size());
+
+    // Set variable in the States trajectory
+    model.setStatesTrajectoryForDiscreteVariable<T>(path, vArr, traj);
+}
+//_____________________________________________________________________________
+template<class T>
+void
+initializeStatesForModelingOption(Element& varElt, const Model& model,
+    const string& path, Array_<State> & traj)
+{
+    // Interpret the Element value
+    Array_<T> vArr;
+    varElt.getValueAs<Array_<T>>(vArr);
+
+    // Check the sizes.
+    int n = vArr.size();
+    SimTK_ASSERT2_ALWAYS(n == traj.size(),
+        "Found %d values. Should match nTime = %d values.",
+        n, traj.size());
+
+    // Set variable in the States trajectory
+    model.setStatesTrajectoryForModelingOption<T>(path, vArr, traj);
+}
 
 //-----------------------------------------------------------------------------
 // Construction
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
 StatesDocument::
-StatesDocument(const Model& model, const Array_<State>& trajectory, int p)
-{
-    // Set ouput precisison (1 <= precision <= SimTK::LosslessNumDigitsReal)
+StatesDocument(const Model& model, const Array_<State>& trajectory, int p) {
     precision = clamp(1, p, SimTK::LosslessNumDigitsReal);
     formDoc(model, trajectory);
 }
@@ -114,13 +169,13 @@ formTimeElement(const Model& model, const Array_<State>& traj) {
 
     // Get time values from the StatesTrajectory
     int n = (int)traj.size();
-    SimTK::Vector_<double> time(n);
+    SimTK::Array_<double> time(n);
     for (int i = 0; i < n; ++i) {
         time[i] = traj[i].getTime();
     }
 
     // Set the text value on the element
-    timeElt.setValueAs<Vector_<double>>(time, precision);
+    timeElt.setValueAs<Array_<double>>(time, precision);
 }
 //_____________________________________________________________________________
 void
@@ -276,7 +331,7 @@ parseDoc(const Model& model, Array_<State>& traj) {
     initializeTime(traj);
     initializeContinuousVariables(model, traj);
     initializeDiscreteVariables(model, traj);
-    initializeModelingVariables(model, traj);
+    initializeModelingOptions(model, traj);
 }
 //_____________________________________________________________________________
 void
@@ -293,15 +348,20 @@ prepareStatesTrajectory(const Model& model, Array_<State>& traj) {
     SimTK::State state = localModel.initSystem();
 
     // How many State objects should there be?
+    // The number of objects needs to be the same as the number of time stamps.
+    // Each State object has a time field, which will be set in
+    // initializeTime().
     Element rootElt = doc.getRootElement();
-    Attribute numStateAttr = rootElt.getOptionalAttribute("numStateObjects");
-    int numStateObjects;
-    bool success = numStateAttr.getValue().tryConvertTo<int>(numStateObjects);
+    Attribute nTimeAttr = rootElt.getOptionalAttribute("nTime");
+    int nTime;
+    bool success = nTimeAttr.getValue().tryConvertTo<int>(nTime);
     SimTK_ASSERT_ALWAYS(success,
-        "Unable to acquire number of State objects from root element.");
-    SimTK_ASSERT1_ALWAYS(numStateObjects > 0,
-        "Root element attribute numStateObjects=%d; should be > 0.",
-        numStateObjects);
+        "Unable to acquire nTime from root element.");
+    SimTK_ASSERT1_ALWAYS(nTime > 0,
+        "Root element attribute numStateObjects=%d; should be > 0.", nTime);
+
+    // Append State objects
+    for (int i=0; i < nTime; ++i) traj.emplace_back(state);
 }
 //_____________________________________________________________________________
 void
@@ -310,51 +370,150 @@ initializeTime(Array_<State>& traj) {
     // Find the element
     Element rootElt = doc.getRootElement();
     Array_<Element> timeElts = rootElt.getAllElements("time");
+
+    // Check the number of time elements found. Should be 1.
     SimTK_ASSERT1_ALWAYS(timeElts.size() == 1,
         "%d time elements found. Should only be 1.", timeElts.size());
-    Element timeElt = timeElts[0];
 
     // Get the values
     Array_<double> timeArr;
-    timeElt.getValueAs<Array_<double>>(timeArr);
+    timeElts[0].getValueAs<Array_<double>>(timeArr);
+
+    // Check the size of the time array.
+    int n = traj.size();
+    SimTK_ASSERT2_ALWAYS(n == traj.size(),
+        "Found %d time values. Should match numStateObjects = %d",
+        n, traj.size());
 
     // Initialize the State objects
-    int n = traj.size();
     for (int i = 0; i < n; ++i) traj[i].setTime(timeArr[i]);
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-initializeContinuousVariables(const Model& model,
-    SimTK::Array_<State>& traj)
-{
-    // Find the element
+initializeContinuousVariables(const Model& model, SimTK::Array_<State>& traj) {
+    // Find the 'continuous' element
+    SimTK::String tag = "continuous";
     Element rootElt = doc.getRootElement();
-    Array_<Element> contElts = rootElt.getAllElements("discrete");
+    Array_<Element> contElts = rootElt.getAllElements(tag);
     SimTK_ASSERT1_ALWAYS(contElts.size() == 1,
-        "%d continuous elements found. Should only be 1.", contElts.size());
-    Element discElt = contElts[0];
+        "Found %d elements with tag 'continuous'. Should only be 1.",
+        contElts.size());
 
+    // Find all the child 'variable' elements
+    SimTK::String childTag = "variable";
+    Array_<Element> varElts = contElts[0].getAllElements(childTag);
+
+    // Check that the number matches the number of continous variables.
+    // In OpenSim, a continuous variable is referred to as a StateVariable.
+    OpenSim::Array<std::string> varNames = model.getStateVariableNames();
+    int n = varElts.size();
+    int m = varNames.size();
+    SimTK_ASSERT2_ALWAYS(n == m,
+        "Found %d variable elements. Should be %d.", n, m);
+
+    // Loop over the variable elements
+    SimTK::Array_<double> varArr;
+    for (int i = 0; i < n; ++i) {
+        // type
+        Attribute typeAttr = varElts[i].getOptionalAttribute("type");
+        const SimTK::String &type = typeAttr.getValue();
+
+        // path
+        Attribute pathAttr = varElts[i].getOptionalAttribute("path");
+        const SimTK::String path = pathAttr.getValue();
+
+        // Switch based on the type.
+        // Type double is expected for continuous variable elements.
+        if (type == "double") {
+            initializeStatesForStateVariable<double>(varElts[i],
+                model, path, traj);
+        }
+        else {
+            string msg = "Unrecognized type: " + type;
+            SimTK_ASSERT(false, msg.c_str());
+        }
+    }
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-initializeDiscreteVariables(const Model& model,
-    SimTK::Array_<State>& traj)
-{
+initializeDiscreteVariables(const Model& model, SimTK::Array_<State>& traj) {
     Element rootElt = doc.getRootElement();
     Array_<Element> discElts = rootElt.getAllElements("discrete");
     SimTK_ASSERT1_ALWAYS(discElts.size() == 1,
-        "%d discrete elements found. Should only be 1.", discElts.size());
-    Element discElt = discElts[0];
+        "Found %d elements with tag 'discrete'. Should only be 1.",
+        discElts.size());
 
+    // Find all the child 'variable' elements
+    SimTK::String childTag = "variable";
+    Array_<Element> varElts = discElts[0].getAllElements(childTag);
+
+    // Check that the number matches the number of discrete variables.
+    OpenSim::Array<std::string> varNames = model.getDiscreteVariableNames();
+    int n = varElts.size();
+    int m = varNames.size();
+    SimTK_ASSERT2_ALWAYS(n == m,
+        "Found %d variable elements. Should be %d.", n, m);
+
+    // Loop over the variable elements
+    for (int i = 0; i < n; ++i) {
+        // type
+        Attribute typeAttr = varElts[i].getOptionalAttribute("type");
+        const SimTK::String &type = typeAttr.getValue();
+
+        // path
+        Attribute pathAttr = varElts[i].getOptionalAttribute("path");
+        const SimTK::String path = pathAttr.getValue();
+
+        // Switch based on the type
+        // Append the vector according to type
+        if (type == "bool") {
+            initializeStatesForDiscreteVariable<bool>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "int") {
+            initializeStatesForDiscreteVariable<int>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "float") {
+            initializeStatesForDiscreteVariable<float>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "double") {
+            initializeStatesForDiscreteVariable<double>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "Vec2") {
+            initializeStatesForDiscreteVariable<Vec2>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "Vec3") {
+            initializeStatesForDiscreteVariable<Vec3>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "Vec4") {
+            initializeStatesForDiscreteVariable<Vec4>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "Vec5") {
+            initializeStatesForDiscreteVariable<Vec5>(varElts[i],
+                model, path, traj);
+        }
+        else if(type == "Vec6") {
+            initializeStatesForDiscreteVariable<Vec6>(varElts[i],
+                model, path, traj);
+        }
+        else {
+            string msg = "Unrecognized type: " + type;
+            SimTK_ASSERT(false, msg.c_str());
+        }
+    }
 }
 //_____________________________________________________________________________
 void
 StatesDocument::
-initializeModelingVariables(const Model& model,
-    SimTK::Array_<State>& traj)
-{
+initializeModelingOptions(const Model& model, SimTK::Array_<State>& traj) {
     // Find the element
     Element rootElt = doc.getRootElement();
     Array_<Element> modlElts = rootElt.getAllElements("modeling");
@@ -362,6 +521,40 @@ initializeModelingVariables(const Model& model,
         "%d modeling elements found. Should only be 1.", modlElts.size());
     Element modlElt = modlElts[0];
 
+    // Find all the child 'variable' elements.
+    SimTK::String childTag = "option";
+    Array_<Element> varElts = modlElts[0].getAllElements(childTag);
+
+    // Check that the number matches the number of continous variables.
+    // In OpenSim, a continuous variable is referred to as a StateVariable.
+    OpenSim::Array<std::string> varNames = model.getModelingOptionNames();
+    int n = varElts.size();
+    int m = varNames.size();
+    SimTK_ASSERT2_ALWAYS(n == m,
+        "Found %d variable elements. Should be %d.", n, m);
+
+    // Loop over the modeling options
+    SimTK::Array_<double> varArr;
+    for (int i = 0; i < n; ++i) {
+        // type
+        Attribute typeAttr = varElts[i].getOptionalAttribute("type");
+        const SimTK::String &type = typeAttr.getValue();
+
+        // path
+        Attribute pathAttr = varElts[i].getOptionalAttribute("path");
+        const SimTK::String path = pathAttr.getValue();
+
+        // Switch based on the type.
+        // Type int is expected for modeling option elements.
+        if (type == "int") {
+            initializeStatesForModelingOption<int>(varElts[i],
+                model, path, traj);
+        }
+        else {
+            string msg = "Unrecognized type: " + type;
+            SimTK_ASSERT(false, msg.c_str());
+        }
+    }
 }
 
 
