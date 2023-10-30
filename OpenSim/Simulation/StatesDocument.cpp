@@ -43,7 +43,8 @@ appendVarElt(const string& path, const string& tag, const string& type,
     varElt.setAttributeValue("type", type);
 
     // Append the variable element
-    varElt.setValueAs<Array_<T>>(valArr, precision);
+    //varElt.setValueAs<Array_<T>>(valArr, precision);
+    varElt.setValueAs<Array_<T>>(valArr);
     parent.appendNode(varElt);
 }
 //_____________________________________________________________________________
@@ -175,7 +176,8 @@ formTimeElement(const Model& model, const Array_<State>& traj) {
     }
 
     // Set the text value on the element
-    timeElt.setValueAs<Array_<double>>(time, precision);
+    timeElt.setValueAs<Array_<double>>(time);
+    //timeElt.setValueAs<Array_<double>>(time, precision);
 }
 //_____________________________________________________________________________
 void
@@ -616,7 +618,8 @@ prototype() {
     // Time
     SimTK::Vector_<double> time(num);
     for (i = 0; i < num; ++i) { time[i] = 0.1 * SimTK::Pi * (double)i; }
-    timeElt.setValueAs<Vector_<double>>(time, precision);
+    //timeElt.setValueAs<Vector_<double>>(time, precision);
+    timeElt.setValueAs<Vector_<double>>(time);
 
     // Experiment with output precision
     cout.unsetf(std::ios::floatfield);
@@ -628,7 +631,8 @@ prototype() {
     for (i = 0; i < num; ++i) { q[i] = 1.0e-10 * SimTK::Pi * (double)i; }
     Xml::Element hipElt("variable");
     hipElt.setAttributeValue("path", "/jointset/hip/flexion/value");
-    hipElt.setValueAs<Vector_<double>>(q, precision);
+    //hipElt.setValueAs<Vector_<double>>(q, precision);
+    hipElt.setValueAs<Vector_<double>>(q);
     continuousElt.appendNode(hipElt);
 
     // Elastic Anchor Point
@@ -639,7 +643,8 @@ prototype() {
     }
     Xml::Element anchorElt("variable");
     anchorElt.setAttributeValue("path", "/forceset/EC0/anchor");
-    anchorElt.setValueAs<Array_<Vec3>>(anchor, precision);
+    //anchorElt.setValueAs<Array_<Vec3>>(anchor, precision);
+    anchorElt.setValueAs<Array_<Vec3>>(anchor);
     discreteElt.appendNode(anchorElt);
 
     // Now -- Getting Vectors out!
