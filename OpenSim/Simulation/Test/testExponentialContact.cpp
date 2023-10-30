@@ -20,6 +20,15 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
+#ifdef _DEBUG
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+ // Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
+ // allocations to be of _CLIENT_BLOCK type
+#else
+#define DBG_NEW new
+#endif
+
+#define _CRTDBG_MAP_ALLOC
 
 #include <iostream>
 #include <OpenSim/Common/IO.h>
@@ -48,6 +57,9 @@
 #include <OpenSim/Simulation/StatesTrajectoryReporter.h>
 #include <OpenSim/Simulation/StatesDocument.h>
 #include <OpenSim/Auxiliary/auxiliaryTestFunctions.h>
+
+#include <OpenSim/Actuators/osimActuators.h>
+
 #include "SimTKsimbody.h"
 
 using namespace SimTK;
@@ -95,9 +107,13 @@ public:
     // Destructor
     ~ExponentialContactTester() {
         if (model) {
-            model->disownAllComponents();
+            //model->disownAllComponents();  // See note just below.
             delete model;
         }
+        // If the model still owns its components, the following deletes should
+        // not be called. On the other hand, if all components are disowned,
+        // they must be individually deleted.
+        /*
         if (blockEC) delete blockEC;
         if (blockHC) delete blockHC;
         for (int i = 0; i < n; i++) {
@@ -105,6 +121,7 @@ public:
             if (sprHC[i]) delete sprHC[i];
             if (geomHC[i]) delete geomHC[i];
         }
+        */
     }
 
     // Command line parsing and usage
@@ -308,7 +325,7 @@ ExponentialContactTester::
 buildModel()
 {
     // Create the bodies
-    model = new Model();
+    model = DBG_NEW Model();
     model->setGravity(gravity);
     model->setName("BouncingBlock_ExponentialContact");
     switch (whichContact) {
@@ -339,14 +356,14 @@ buildModel()
         setForceData(tf, point, force);
         if (blockEC) {
             cout << "Adding fx for " << blockEC->getName() << endl;
-            fxEC = new ExternalForce(fxData,"force", "point", "",
+            fxEC = DBG_NEW ExternalForce(fxData,"force", "point", "",
                 blockEC->getName(), "ground", blockEC->getName());
             fxEC->setName("externalforceES");
             model->addForce(fxEC);
         }
         if (blockHC) {
             cout << "Adding fx for " << blockHC->getName() << endl;
-            fxHC = new ExternalForce(fxData, "force", "point", "",
+            fxHC = DBG_NEW ExternalForce(fxData, "force", "point", "",
                 blockHC->getName(), "ground", blockHC->getName());
             fxHC->setName("externalforceHC");
             model->addForce(fxHC);
@@ -355,7 +372,7 @@ buildModel()
 
     // Reporters
     // StatesTrajectory
-    statesReporter = new StatesTrajectoryReporter();
+    statesReporter = DBG_NEW StatesTrajectoryReporter();
     statesReporter->setName("states_reporter");
     statesReporter->set_report_time_interval(0.1);
     model->addComponent(statesReporter);
@@ -364,12 +381,12 @@ buildModel()
     // Visuals?
     if (showVisuals) {
         if (blockEC) {
-            auto blockESGeometry = new Brick(Vec3(hs));
+            auto blockESGeometry = DBG_NEW Brick(Vec3(hs));
             blockESGeometry->setColor(Vec3(0.1, 0.1, 0.8));
             blockEC->attachGeometry(blockESGeometry);
         }
         if (blockHC) {
-            auto blockHCGeometry = new Brick(Vec3(hs));
+            auto blockHCGeometry = DBG_NEW Brick(Vec3(hs));
             blockHCGeometry->setColor(Vec3(0.8, 0.1, 0.1));
             blockHC->attachGeometry(blockHCGeometry);
         }
@@ -418,7 +435,7 @@ addBlock(const std::string& suffix)
 
     // Body
     std::string name = "block" + suffix;
-    OpenSim::Body* block = new OpenSim::Body();
+    OpenSim::Body* block = DBG_NEW OpenSim::Body();
     block->setName(name);
     block->set_mass(mass);
     block->set_mass_center(Vec3(0));
@@ -426,7 +443,7 @@ addBlock(const std::string& suffix)
 
     // Joint
     name = "free" + suffix;
-    FreeJoint *free = new
+    FreeJoint *free = DBG_NEW
         FreeJoint(name, ground, Vec3(0), Vec3(0), *block, Vec3(0), Vec3(0));
     model->addBody(block);
     model->addJoint(free);
@@ -458,7 +475,7 @@ addExponentialContact(OpenSim::Body* block)
     std::string name = "";
     for (int i = 0; i < n; ++i) {
         name = "Exp" + std::to_string(i);
-        sprEC[i] = new OpenSim::ExponentialContact(floorXForm,
+        sprEC[i] = DBG_NEW OpenSim::ExponentialContact(floorXForm,
             block->getName(), corner[i], params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
@@ -472,7 +489,7 @@ addHuntCrossleyContact(OpenSim::Body* block)
     Ground& ground = model->updGround();
 
     // Geometry for the floor
-    ContactHalfSpace* floor = new ContactHalfSpace(
+    ContactHalfSpace* floor = DBG_NEW ContactHalfSpace(
             Vec3(0), Vec3(0, 0, -0.5 * SimTK_PI), ground, "floor");
     model->addContactGeometry(floor);
 
@@ -481,7 +498,7 @@ addHuntCrossleyContact(OpenSim::Body* block)
     for (int i = 0; i < n; ++i) {
         // Geometry
         name = "sphere_" + std::to_string(i);
-        geomHC[i] = new ContactSphere(0.005, corner[i], *block, name);
+        geomHC[i] = DBG_NEW ContactSphere(0.005, corner[i], *block, name);
         model->addContactGeometry(geomHC[i]);
 
         // HuntCrossleyForce
@@ -493,12 +510,12 @@ addHuntCrossleyContact(OpenSim::Body* block)
             mus = 0.0;
             muk = 0.0;
         }
-        auto* contactParams = new OpenSim::HuntCrossleyForce::
+        auto* contactParams = DBG_NEW OpenSim::HuntCrossleyForce::
             ContactParameters(1.0e7, dissipation, mus, muk, 0.0);
 
         contactParams->addGeometry(name);
         contactParams->addGeometry("floor");
-        sprHC[i] = new OpenSim::HuntCrossleyForce(contactParams);
+        sprHC[i] = DBG_NEW OpenSim::HuntCrossleyForce(contactParams);
         name = "HuntCrossleyForce_" + std::to_string(i);
         sprHC[i]->setName(name);
         sprHC[i]->setTransitionVelocity(0.01);
@@ -853,8 +870,10 @@ simulate()
     //model->print("C:\\Users\\fcand\\Documents\\block.osim");
 
     // Serialize
+    int precision = 10;
     const StatesTrajectory& statesTraj = statesReporter->getStates();
-    StatesDocument statesDocSe = statesTraj.exportToStatesDocument(*model);
+    StatesDocument statesDocSe =
+        statesTraj.exportToStatesDocument(*model);
     SimTK::String filename01 =
         "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test01.ostates";
     statesDocSe.serializeToFile(filename01);
@@ -867,9 +886,26 @@ simulate()
     // Reserialize
     SimTK::String filename02 =
         "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test02.ostates";
-    StatesDocument statesDocRe(*model, traj);
+    StatesDocument statesDocRe(*model, traj, precision);
     statesDocRe.serializeToFile(filename02);
 }
+
+
+void testForXMLMemoryLeaks() {
+
+    SimTK::String inFile =
+        "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015.osim";
+
+    // Deserialize
+    OpenSim::Model model(inFile);
+    cout << endl << endl << "Rajagopal2015 Model loaded!" << endl << endl;
+
+    // Serialize with a new file name
+    SimTK::String outFile =
+    "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015_out.osim";
+    model.print(outFile);
+}
+
 
 //_____________________________________________________________________________
 /* Entry Point (i.e., main())
@@ -926,21 +962,86 @@ For ExponentialContact, the following things are tested:
 The HuntCrossleyForce class is tested elsewhere (e.g., see
 testContactGeometry.cpp and testForce.cpp). */
 int main(int argc, char** argv) {
+    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
+    // Register object types
+    RegisterTypes_osimActuators();
+
+    // Check for mem leaks on a more complex model.
+    testForXMLMemoryLeaks();
+
+    // Intentional leak
+    //_CrtMemState memoryStateB4Intentional = {0};
+    //_CrtMemCheckpoint(&memoryStateB4Intentional);
+    //char* intentionalLeak = new char[11];
+    //_CrtMemDumpAllObjectsSince(&memoryStateB4Intentional);
+
+    /* Findings:
+    * The are many leaks when loading the Raja model.
+    * The Millard muscle itself is not a leak
+    * There are leaks when just the BodySet is deserialized.
+    * There are leaks when just the pelvis is loaded.
+    * There are still leaks when the wrap objects are removed.
+    * There are still leaks when the visible objects are removed.
+    01 There are NO LEAKS with just the ground body.
+    02 There are leaks when an empty <VisibleObject /> element that is part
+       of the ground body is loaded!
+    */
+
+    /*
+    //_CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
+    //_CrtMemState memoryStateB4Sim = {0};
+    ExponentialContactTester *tester = DBG_NEW ExponentialContactTester;
     try {
-        ExponentialContactTester tester;
-        int status = tester.parseCommandLine(argc, argv);
+        int status = tester->parseCommandLine(argc, argv);
         if (status < 0) {
             cout << "Exiting..." << endl;
             return 1;
         }
-        tester.buildModel();
-        tester.test();
-        tester.simulate();
-
+        tester->buildModel();
+        tester->test();
+        //_CrtMemCheckpoint(&memoryStateB4Sim);
+        tester->simulate();
     } catch (const OpenSim::Exception& e) {
         e.print(cerr);
         return 1;
     }
     cout << "Done" << endl;
+    delete tester;
+    cout << endl << endl << endl;
+    cout << "------------------------------------------------------" << endl;
+    cout << endl << endl << endl;
+    //_CrtMemDumpAllObjectsSince(&memoryState);
+    //_CrtMemDumpAllObjectsSince(&memoryStateB4Sim);
+    char* intentionalLeak = new char[11];
+    //delete[] intentionalLeak;
+    //_CrtDumpMemoryLeaks();
+
+    */
+
+    //char* intentionalLeak = new char[11];
+
     return 0;
 }
+
+/**----------------------------------------------------------------------------
+* Useful memory leak detection commands for Windows:
+*
+
+// Static variables sometimes look like leaks but are not actual leaks.
+// Leak detection for statics has to be done after main() completes. To ask
+// the Crt memory manager to check after main() completes, set the bits for
+// flag _CRTDBG_LEAK_CHECK_DF to true. Note that a memory leak dump only
+// occurs if a leak is detected.
+    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
+// Dump all memory leaks since execution began:
+    _CrtDumpMemoryLeaks();
+
+// To isolate leaks that occur in soecific block of code, create a check point
+// and filter out all leaks that occured before the check point:
+    _CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
+    ... the block of code to be tested ...
+    _CrtMemDumpAllObjectsSince(&memoryState);
+
+*/
