@@ -23,16 +23,6 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#ifdef _DEBUG
-#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
-// Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
-// allocations to be of _CLIENT_BLOCK type
-#else
-#define DBG_NEW new
-#endif
-
-#define _CRTDBG_MAP_ALLOC
-
 // INCLUDE
 #include <SimTKsimbody.h>
 #include "osimSimulationDLL.h"
@@ -52,9 +42,8 @@ control problems, etc.).
 The states of an OpenSim::Model consist of all the independent variables that
 change (or can change) during a simulation. At each time step during a
 simulation, the underlying SimTK infrastructure captures the states in a
-SimTK::State object.
-
-A state variable falls into one of the following categories:
+SimTK::State object. A state variable falls into one of the following
+categories:
 
         1) Continuous Variables (aka OpenSim::StateVariable%s)
         2) Discrete Variables
@@ -78,7 +67,7 @@ updated at each time step during numerical integration. Unlike continuous
 states, however, they are updated based on closed-form algebraic expressions
 rather than based on their derivatives. In the underlying SimTK infrastructure,
 these output variables are implemented as a specialized kind of discrete
-variable called an Auto-Update Discrete Variables.
+variable called an Auto-Update Discrete Variable.
 
 Modeling Options are flags, usually of type int, that are used to choose
 between viable ways to model the System or whether or not to apply a
@@ -88,33 +77,33 @@ particular joint coordinate is locked or unlocked. When a Modeling Options is
 changed, low-level aspects of the System must be reconstituted or, in SimTK
 terminology, re-realized through SimTK::Stage::Model.
 
-Prior to the introduction of class StatesDocument, only Continuous Variables
-(i.e., OpenSim::StateVariable%s) were routinely and systematically serialized,
-most commonly via the OpenSim::Manager as an OpenSim::Storage file or via class
-OpenSim::StatesTrajectory as an OpenSim::TimeSeriesTable. Discrete Variables
-and Modeling Options, if serialized, had to be stored in separate files or
-handled as OpenSim::Property objects. In addition, prior to this class, all
-Discrete Variables in OpenSim were assumed to be type double, which is not a
-requirement of the underlying SimTK infrastructure.
+Prior to the introduction of this class StatesDocument, only Continuous
+Variables (i.e., OpenSim::StateVariable%s) were routinely and systematically
+serialized, most commonly via the OpenSim::Manager as an OpenSim::Storage file
+or via class OpenSim::StatesTrajectory as an OpenSim::TimeSeriesTable.
+Discrete Variables and Modeling Options, if serialized, had to be stored in
+separate files or handled as OpenSim::Property objects. In addition, prior to
+this class, all Discrete Variables in OpenSim were assumed to be type double,
+which is not a requirement of the underlying SimTK infrastructure.
 
 With the introduction of this class, all state variables {i.e., Continuous
 Variables (OpenSim::StateVariable%s), Discrete Variables, and Modeling Options}
-can be serialized into the same file, which by convention has the
-```.ostates``` file name exention. In addition, a variety of types (e.g., bool,
-int, double, Vec3, Vec4, etc.) are supported for Discrete Variables. Continuous
-States are still assumed to be type double, and Modeling Options are still
-assumed to be type int. Note, however, the ```.ostates``` file format has the
-flexibility to relax these assumptions if needed.
+can be serialized into a single file, which by convention has the```.ostates```
+file name exention. In addition, a variety of types (e.g., bool, int, double,
+Vec3, Vec4, etc.) are supported for Discrete Variables. Continuous States are
+still assumed to be type double, and Modeling Options are still assumed to be
+type int. Note, however, that the ```.ostates``` file format has the
+flexibility to relax these assumptions and include other types if needed.
 
 @note A point of clarification about Data Cache Variables...
-By definition, state variables are independent: the value of one cannot be
-determined from the values of others. If a quantity of interest can be
-computed from the values of the state variables, particularly if that quantity
-is needed frequently, that quantity is often formalized as a Data Cache
-Variable. The value of a Data Cach Variable is computed at each time step of a
-simulation and stored in the SimTK::State. However, because a Data Cache
-Variable can always be computed from the Continuous Variables, Discrete
-Variables, and Modeling Options, they are not serialized.
+By definition, state variables are independent. That is, the value of one
+cannot be determined from the values of others. If a quantity of interest can
+be computed from values of state variables, particularly if that quantity is
+needed frequently, that quantity is often formalized as a Data Cache Variable.
+The value of a Data Cach Variable is computed at each time step of a simulation
+and stored in the SimTK::State. However, because a Data Cache Variable can
+always be computed from the Continuous Variables, Discrete Variables, and
+Modeling Options, they are not serialized.
 
         SimTK::State Contents    | Serialized in ```.ostates```?
         ------------------------ | -----------------------
@@ -129,9 +118,9 @@ Design Notes
 -----------------
 
 ### Dependencies
-Most operations in class StatesDocument rely on SimTK classes, most notably
-SimTK::String, SimTK::Vector_<T>, SimTK::Array<T>, SimTK::State, and
-SimTK::Xml.
+Most operations in class StatesDocument rely on underlying SimTK classes,
+most notably SimTK::String, SimTK::Vector_<T>, SimTK::Array<T>, SimTK::State,
+and SimTK::Xml.
 
 StatesDocument has just one key OpenSim dependency: OpenSim::Model.
 OpenSim::Model brings with it all the methods it inherits from class
@@ -142,7 +131,7 @@ OpenSim::Manager.
 
 Exchanges of state information between class StatesDocument and the rest of
 OpenSim are accomplished via objects of type SimTK::Array_<SimTK::State>,
-which are informally referred to as state trajectories.
+which are informally referred to as state trajectories (see directly below).
 
 ### Trajectories
 In many methods of this class, as well as in related classes, you will
@@ -195,9 +184,9 @@ specified by the caller.
 
 ### Complete and Constant XML Document upon Construction
 Upon construction, a StatesDocument instance always contains a complete
-internal XML document that represents a complete serialization of a
-specific model's state trajectory. Moreover, that internal XML document cannot
-be altered after construction!
+internal XML document that represents a complete serialization of a specific
+model's state trajectory. Moreover, that internal XML document cannot be
+altered after construction!
 
 If a model is changed (e.g., a muscle or contact model is added) or
 a change has occurred in its state trajectory, the intended way to generate
@@ -276,7 +265,7 @@ states trajectory for an OpenSim::Model requires the following:
     3) All ```variable``` and ```option``` paths must be found in the model
     OpenSim::Component heirarchy.
 
-    4) The type must be supported. As of June 2023, the following types are
+    4) The type must be supported. As of January 2024, the following types are
     supported:
 
             SimTK::State Category    | Supported Type(s)
