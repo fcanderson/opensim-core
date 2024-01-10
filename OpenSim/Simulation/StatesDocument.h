@@ -278,10 +278,76 @@ states trajectory for an OpenSim::Model requires the following:
             Modeling Options         | int
 
 
------------------
-Use Cases
------------------
+--------------------------
+Using Class StatesDocument
+--------------------------
+The following code snippets show how to use the StatesDocument class to
+serialize simulated states to file and then deserialize states from file.
 
+The first two examples (Examples 1 & 2) use a relatively high-level OpenSim
+class, the OpenSim::StatesTrajectory class, to hold the state trajectories.
+The advantage of using the StatesTrajectory class is that it can also be
+used to create both OpenSim::Storage and OpenSim::TimeSeriesTable objects in
+addition to a StatesDocument object. Note that OpenSim::Storage objects and
+OpenSim::TimeSeriesTable objects are currently suitable only for handling
+continuous states and not discrete states.
+
+The second two examples (Examples 3 & 4) use a relatively low-level class,
+the SimTK::Array_<SimTK::State> class, to hold the state trajectories. This
+approach allows the state-trajectory oriented methods provided by the
+OpenSim::Component API to be called directly.
+
+### Example 1: Serializing Simulated States via StatesTrajectory
+```
+    // Add StatesTrajectory reporter to the System.
+
+
+    // Export a StatesDocument from the recorded StatesTrajectory.
+
+
+    // Serialize the states to file.
+
+```
+
+### Example 2: Deserializing States via StatesTrajectory
+```
+    // Construct a StatesDocument instance from a file.
+
+
+    // Construct a StatesTrajectory from the StatesDocument
+
+
+    // Create a Storage object or TimeSeriesTable for continuous states.
+    // Note- neither of these objects is suitable for holding discrete states.
+
+
+
+```
+
+
+### Example 3: Serializing Simulated States via Array_<State>
+```
+    // Add a state reporter to the System.
+
+
+    // Construct a StatesDocument from the Array_<State>
+
+
+    // Serialize the states to file.
+
+```
+
+
+### Example 4: Deserializing via Array_<State>
+```
+    // Construct a StatesDocument instance from a file.
+
+
+    // Deserialize the document into an Array_<State> trajectory.
+
+
+    // Use the Component API to extract a trajectory for a named state.
+```
 
 
 
