@@ -142,10 +142,10 @@ class Model;
  */
 class OSIMSIMULATION_API StatesTrajectory {
 public:
-    /** Create an empty trajectory of states. */
+    /** Construct an empty trajectory of states. */
     StatesTrajectory() {}
 
-    /** Create a complete trajectory of states from a StatesDocument. */
+    /** Construct a complete trajectory of states from a StatesDocument. */
     StatesTrajectory(const OpenSim::Model& model, StatesDocument& document) {
         document.deserialize(model, m_states);
     }
@@ -337,9 +337,8 @@ public:
     * Storage and TimeSeriesTable objects generally include only the
     * continuous states (i.e., OpenSim::StateVariable%s).
     *
-    * Thus, when relying on serialization to preserve and hence deserialization
-    * to reproduce a complete StatesTrajectory, a StatesDocument is the
-    * preferred approach.
+    * Thus, when relying on serialization and deserialization to reproduce a
+    * complete StatesTrajectory, a StatesDocument is the preferred source.
     *
     * Note that a StateTrajectory obtained using an
     * OpenSim::StatesTrajectoryReporter will be complete and valid.
