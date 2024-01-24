@@ -281,24 +281,10 @@ states trajectory for an OpenSim::Model requires the following:
 --------------------------
 Using Class StatesDocument
 --------------------------
-Below you will find several code snippets that show how the StatesDocument
-class can be used to serialize (Example 1) and subsequently deserialize
-(Example 2) the states of a model.
-
-
-
-The first two examples (Examples 1 & 2) use a relatively high-level OpenSim
-class, OpenSim::StatesTrajectory, to hold the state trajectories. The
-advantage of using the StatesTrajectory class is that it can be used to create
-both OpenSim::Storage and OpenSim::TimeSeriesTable objects in addition to a
-StatesDocument object. Note that Storage objects and TimeSeriesTable objects
-are currently suitable for handling continuous states but not discrete states.
-
-The second two examples (Examples 3 & 4) use a relatively low-level class,
-SimTK::Array_<SimTK::State>, to hold the state trajectories. This approach
-is suitable for handling all categories of the system state (continuous,
-discrete, and modeling) and allows the trajectory-oriented methods of the
-OpenSim::Component API to be called directly.
+Below are some code snippets that show how the StatesDocument class can be
+used. Example 1 shows how to obtain a states trajectory from a simulation and
+then serialize those states to file. Example 2 shows how to follow up and
+deserialize those same states and use them to accomplish a few basic things.
 
 ### Example 1: Serializing Simulated States
 ```
@@ -319,7 +305,7 @@ OpenSim::Component API to be called directly.
     // Add a StatesTrajectory Reporter
     // -------------------------------
     // The reporter records the SimTK::State in a SimTK::Array_<> at a
-    // time interval.
+    // specified time interval.
     OpenSim::StatesTrajectoryReporter
         reporter = new StatesTrajectoryReporter();
     reporter->setName("states_reporter");
@@ -348,24 +334,31 @@ OpenSim::Component API to be called directly.
     // -----------------------
     // Create a StatesDocument
     // -----------------------
-    // Note that if the reporter were to return an unencapsulated trajectory
-    // (i.e., Array_<State>), the export from class StatesTrajectory below can
-    // be side stepped and the document created directly by using the following
-    // constructor:
-    // 
-    // StatesDocument(const Model& model, const Array_<State>& trajectory,
-    //      int precision = LosslessNumDigitsReal)
-    //
+    // The reporter that was added to the system collects the states in an
+    // OpenSim::StatesTrajectory object. Underneath the covers, the states are
+    // accumulated in a private array of state objects (i.e., Array_<State>).
+    // The StatesTrajectory class does not provide direct access to this
+    // private array, but it does know how to export a StatesDocument based on
+    // those states. This "export" functionality is what is used below.
     const StatesTrajectory& trajectory = reporter->getStates();
     StatesDocument doc = trajectory.exportToStatesDocument(model);
+
+    // Alternatively, if the reporter did provide direct access to the
+    // underlying array of states (i.e., the Array_<State>) instead of the
+    // StatesTrajectory object, the StatesDocument would be created by doing
+    // the following:
+    const SimTK::Array_<SimTK::State>& trajectory = reporter->getStates();
+    StatesDocument doc(model, trajectory);
 
     // ----------------------------
     // Serialize the States to File
     // ----------------------------
-    // For the file name, any string supported by the file system can be used.
-    // The recommended convention, however, is for the file name to carry the
-    // suffix ".ostates". Below, the suffix ".ostates" is simply added to the
-    // name of the model.
+    // The file name (see below), can be any string supported by the file
+    // system can be. The recommended convention is for the file name to carry
+    // the suffix ".ostates". Below, the suffix ".ostates" is simply added to
+    // the name of the model, and the document is saved to the current working
+    // directory. The file name can also incorporate a valid system path (e.g.,
+    // "C:/Users/smith/Documents/Work/BouncingBlock.ostates").
     SimTK::String statesFileName = model.getName() + ".ostates";
     doc.serializeToFile(statesFileName);
 
@@ -379,9 +372,9 @@ OpenSim::Component API to be called directly.
 
 ### Example 2: Deserializing States
 ```
-    // ---------------------------
-    // Construct a Model from File
-    // ---------------------------
+    // -----------------------------
+    // Construct the Model from File
+    // -----------------------------
     SimTK::String name = "BouncingBlock";
     SimTK::String modelFileName = name + ".osim";
     OpenSim::Model model(modelFileName);
@@ -389,7 +382,7 @@ OpenSim::Component API to be called directly.
     SimTK::State& initState = model->initializeState();
 
     // -----------------------------------------------
-    // Construct a StatesDocument Instance from File
+    // Construct the StatesDocument Instance from File
     // -----------------------------------------------
     SimTK::String statesFileName = name + ".ostates";
     StatesDocument doc(statesFileName);
@@ -437,8 +430,8 @@ OpenSim::Component API to be called directly.
         path = "/forceset/EC0/anchor"
         const SimTK::AbstractValue& valAbs =
             model.getDiscreteVariableAbstractValue(*iter, path);
-        SimTK::Value<Vec3> val = SimTK::Value<Vec3>::downcast( valAbs );
-        Vec3 anchor = val.get();
+        SimTK::Value<Vec3> valVec3 = SimTK::Value<Vec3>::downcast( valAbs );
+        Vec3 anchor = valVec3.get();
 
         // Get the value of a modeling option
         path = "/jointset/free/free_coord_0/is_clamped";
@@ -449,20 +442,20 @@ OpenSim::Component API to be called directly.
     // ------------------------------------------
     // Extract Trajectories for Individual States
     // ------------------------------------------
-    // Continuous type double
+    // Continuous (double)
     path = "/jointset/free/free_coord_0/value";
     SimTK::Array_<double> xTraj;
     model.getStateVariableTrajectory<double>(path, traj, xTraj);
 
-    // Discrete type Vec3
+    // Discrete (Vec3)
     path = "/forceset/EC0/anchor";
     SimTK::Array_<Vec3> anchorTraj;
     model.getDiscreteVariableTrajectory<Vec3>(path, traj, anchorTraj);
 
-    // Modeling type int
+    // Modeling (int)
     path = "/jointset/free/free_coord_0/is_clamped";
     SimTK::Array_<int> clampedTraj;
-    model.getModelingOptionTrajectory(path, traj, clampedTraj);
+    model.getModelingOptionTrajectory<int>(path, traj, clampedTraj);
 
     // ----------------------
     // Form a TimeSeriesTable
@@ -479,9 +472,8 @@ Because Storage files (*.sto) and TimeSeriesTable files (*.??) typically
 capture only the continuous states of a system, using these files as the basis
 for deserialization runs the risk of leaving discrete variables and modeling
 options in the SimTK::State uninitialized. In such an approach, additional
-steps may need to be taken to properly initialize all variables in the
-SimTK::State (e.g., by relying on OpenSim::Properties and/or on supplemental
-input files).
+steps may be needed to properly initialize all variables in the SimTK::State
+(e.g., by relying on OpenSim::Properties and/or on supplemental input files).
 
 In contrast, the StatesDocument class can be relied upon to yield a complete
 serialization and deserialization of the SimTK::State. If the StatesDocument
@@ -489,7 +481,7 @@ class is used to serialize and then deserialize a state trajectory
 (SimTK::Array_<SimTK::State>) that was recorded during a simulation, all
 state variables in the SimTK::State (continuous, discrete, and modeling)
 will be saved to a single file during serizaliztion and initialized upon
-deserialization of that file.
+deserialization of the document.
 
 @authors F. C. Anderson **/
 class OSIMSIMULATION_API StatesDocument {
