@@ -338,10 +338,8 @@ public:
     * continuous states (i.e., OpenSim::StateVariable%s).
     *
     * Thus, when relying on serialization and deserialization to reproduce a
-    * complete StatesTrajectory, a StatesDocument is the preferred source.
-    *
-    * Note that a StateTrajectory obtained using an
-    * OpenSim::StatesTrajectoryReporter will be complete and valid.
+    * complete StatesTrajectory, a StatesDocument is the preferred source as
+    * it will include continuous, discrete, and modeling states.
     */
     OpenSim::StatesDocument
     exportToStatesDocument(const OpenSim::Model& model,
