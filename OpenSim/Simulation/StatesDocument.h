@@ -195,10 +195,8 @@ StatesDocument instance. Constructing a new instance is the most reliable
 approach for ensuring an accurate serialization. This approach also greatly
 simplifies the implementation of the StatesDocument class, as methods for
 selectively editing aspects of the internal XML document are not needed.
-Finally, it should be noted that constructing a new StatesDocument instance
-typically requires just a fraction of a second.
 
-### Lossless Serialization
+### Output Precision
 The precision with which numbers are serialized to a ```.ostates``` file can be
 specified at the time of construction. The ```precision``` parameter specifies
 the maximum number of significant digits used to represent numbers. If a
@@ -391,17 +389,8 @@ deserialize those same states and use them to accomplish a few basic things.
     // Deserialize the States
     // ----------------------
     // Note that model and document must be entirely consistent with each
-    // other. In particular,
-    // 
-    // 1) The value of the "model" attribute of the root XML element of the
-    // StatesDocument must match the name of the OpenSim::Model (i.e., the
-    // string returned by model.getName()).
-    //
-    // 2) For every state in the model, there must be a coresponding node
-    // in the StatesDocument that has a matching "path" attribute.
-    //
-    // If either of the above requirements is not met, an exception will
-    // be thrown.
+    // other for the deserialization to be successful.
+    // See StatesDocument::deserialize() for details.
     SimTK::Array_<SimTK::State> traj;  // "traj" is short for "trajectory"
     doc.deserialize(model, traj);
 
@@ -477,11 +466,10 @@ steps may be needed to properly initialize all variables in the SimTK::State
 
 In contrast, the StatesDocument class can be relied upon to yield a complete
 serialization and deserialization of the SimTK::State. If the StatesDocument
-class is used to serialize and then deserialize a state trajectory
-(SimTK::Array_<SimTK::State>) that was recorded during a simulation, all
-state variables in the SimTK::State (continuous, discrete, and modeling)
-will be saved to a single file during serizaliztion and initialized upon
-deserialization of the document.
+class is used to serialize and then deserialize a state trajectory that was
+recorded during a simulation, all state variables in the State (continuous,
+discrete, and modeling) will be saved to a single file during serizaliztion
+and initialized upon deserialization of the document.
 
 @authors F. C. Anderson **/
 class OSIMSIMULATION_API StatesDocument {
@@ -490,41 +478,74 @@ public:
     //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
-    /** Construct from file. */
+    /** Construct a StatesDocument instance from an XML file in preparation
+    for deserialzing the states into a states trajectory. Once constructed,
+    the document is not designed to be modified; it is a fixed snapshot of the
+    states stored by the file at the time of construction. If the XML file
+    changes, the intended mechanism for obtaining a document that is
+    consistent with the modifed XML file is simply to construct a new document.
+    By convention (and not requirement), a StatesDocument filename has
+    ".ostates" as its suffix. To deserialize the states, call
+    StatesDocument::deserialize() on the constructed document. Note that the
+    validity of the XML file is not tested until StatesDocument::deserialize()
+    is called.
+
+    @param filename The name of the file, which may include the file system
+    path at which the file resides (e.g., "C:/Documents/block.ostates"). */
     StatesDocument(const SimTK::String& filename) {
         doc.readFromFile(filename);
     }
 
-    /** Construct from a document string. */
-    StatesDocument(const char* xmlDocument) {
-        doc.readFromString(xmlDocument);
-    }
+    /** Construct a StatesDocument instance from a states trajectory in
+    preparation for serializing the trajectory to file. Once constructed, the
+    document is not designed to be modified; it is a fixed snapshot of the
+    states trajectory at the time of construction. The intended mechanism for
+    obtaining a document that is consistent with a modified or new states
+    trajectory is simply to construct a new document. To serialize the
+    constructed document to file, call StatesDocument::serialize().
 
-    /** Construct from states trajectory. */
+    @param model The OpenSim::Model to which the states belong.
+    @param trajectory An array containing the time-ordered sequence of
+    SimTK::State objects.
+    @param precision The number of significant figures with which numerical
+    values are converted to strings. The default value is
+    SimTK:LosslessNumDigitsReal (about 20), which allows for near lossless
+    reproduction of state. */
     StatesDocument(const OpenSim::Model& model,
         const SimTK::Array_<SimTK::State>& trajectory,
         int precision = SimTK::LosslessNumDigitsReal);
 
     //-------------------------------------------------------------------------
-    // Serialization and Deserialization
+    // Serialization
     //-------------------------------------------------------------------------
-    /** Serialize to a file. */
-    void serializeToFile(const SimTK::String& filename) {
+    /** Serialize the document to file. By convention (and not requirement),
+    a StatesDocument filename has ".ostates" as its suffix.
+
+    @param filename The name of the file, which may include the file system
+    path at which to write the file (e.g., "C:/Documents/block.ostates"). */
+    void serialize(const SimTK::String& filename) {
         doc.writeToFile(filename);
     }
 
-    /** Serialize to a document string. */
-    void serializeToString(SimTK::String& xmlDocument, bool compact = false) {
-        doc.writeToString(xmlDocument, compact);
-    }
+    //-------------------------------------------------------------------------
+    // Deserialization
+    //-------------------------------------------------------------------------
+    /** Deserialize the states held by this document into a states trajectory.
+    If deserialization fails, an exception describing the reason for the
+    failure is thrown. See the section called "Deserialization Requirements"
+    in the introductory documentation for this class for details.
 
-    /** Deserialize to a states trajectory. */
+    @param model The OpenSim::Model with which the states are to be associated.
+    @param trajectory The array into which the time-ordered sequence of
+    SimTK::State objects will be deserialized.
+    @throws SimTK::Exception */
     void deserialize(const OpenSim::Model& model,
         SimTK::Array_<SimTK::State>& trajectory);
 
     //-------------------------------------------------------------------------
     // Testing
     //-------------------------------------------------------------------------
+    /** An entry point for running basic tests on this class. */
     void test();
 
 protected:
