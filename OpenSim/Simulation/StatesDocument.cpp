@@ -150,8 +150,8 @@ formRootElement(const Model& model, const Array_<State>& traj) {
     std::locale::global(std::locale(localeName));
     char buf[64];
     strftime(buf, sizeof buf, "%a %b %e %Y %H:%M:%S", std::localtime(&now));
-    SimTK::String datetime = buf;
-    cout << "datetime = " << datetime;
+    //SimTK::String datetime = buf;
+    //cout << "ostates datetime = " << datetime << endl;
 
     // Add attributes to the root node
     rootElt.setAttributeValue("model", model.getName());
