@@ -20,17 +20,6 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
-/*
-#ifdef _DEBUG
-#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
- // Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
- // allocations to be of _CLIENT_BLOCK type
-#else
-#define DBG_NEW new
-#endif
-
-#define _CRTDBG_MAP_ALLOC
-*/
 
 #include <iostream>
 #include <OpenSim/Common/IO.h>
@@ -143,8 +132,7 @@ public:
     // Test stuff not covered elsewhere.
     void test();
     void testParameters();
-    void testSerialization();
-    void testStatesDocument();
+    void testModelSerialization();
     void printDiscreteVariableAbstractValue(const string& pathName,
         const AbstractValue& value) const;
     void testDiscreteVariables(State& state, const ForceSet& fSet);
@@ -611,7 +599,7 @@ test()
     if (whichContact == Hunt) return;
 
     testParameters();
-    testSerialization();
+    testModelSerialization();
     //testStatesDocument();
 }
 //_____________________________________________________________________________
@@ -693,7 +681,7 @@ testParameters()
 //_____________________________________________________________________________
 void
 ExponentialContactTester::
-testSerialization() {
+testModelSerialization() {
     // Serialize the current model
     std::string fileName = "BouncingBlock_ExponentialContact_Serialized.osim";
     model->print(fileName);
@@ -711,11 +699,6 @@ testSerialization() {
     // Parameters should be equal
     SimTK_ASSERT_ALWAYS(pCopy == p,
         "Deserialized parameters are not equal to original parameters.");
-}
-//_____________________________________________________________________________
-void ExponentialContactTester::testStatesDocument() {
-    //StatesDocument statesDoc;
-    //statesDoc.test();
 }
 
 //_____________________________________________________________________________
@@ -758,7 +741,7 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
         // Print values for debugging purposes.
         AbstractValue& valAbstract =
             fSet.updDiscreteVariableAbstractValue(state, names[i]);
-        printDiscreteVariableAbstractValue(names[i], valAbstract);
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
 
         // Declarations
         double tol = 1.0e-6;
@@ -779,7 +762,7 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
             valStartVec3 = valVec3.get();
             valVec3 = valStartVec3 + deltaVec3;
         }
-        printDiscreteVariableAbstractValue(names[i], valAbstract);
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
 
         // Check that the value changed correctly
         if (SimTK::Value<double>::isA(valAbstract)) {
@@ -802,7 +785,7 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
                     SimTK::Value<Vec3>::updDowncast(valAbstract);
             valVec3 = valStartVec3;
         }
-        printDiscreteVariableAbstractValue(names[i], valAbstract);
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
 
         // Check that the value was correctly restored
         if (SimTK::Value<double>::isA(valAbstract)) {
@@ -868,45 +851,32 @@ simulate()
     cout << "          steps:  " << steps << endl;
     cout << "       cpu time:  " << runTime << " msec" << endl;
 
-    // Write the model to file
+    // Save the model to file
     //model->print("C:\\Users\\fcand\\Documents\\block.osim");
 
-    // Serialize
+    // Serialize the states
     int precision = 10;
     const StatesTrajectory& statesTraj = statesReporter->getStates();
     StatesDocument statesDocSe =
         statesTraj.exportToStatesDocument(*model);
     SimTK::String filename01 =
         "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test01.ostates";
-    statesDocSe.serializeToFile(filename01);
+    statesDocSe.serialize(filename01);
 
-    // Deserialize
+    // Deserialize the states
     StatesDocument statesDocDe(filename01);
     Array_<State> traj;
     statesDocDe.deserialize(*model, traj);
 
-    // Reserialize
+    // Reserialize the states
     SimTK::String filename02 =
         "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test02.ostates";
     StatesDocument statesDocRe(*model, traj, precision);
-    statesDocRe.serializeToFile(filename02);
+    statesDocRe.serialize(filename02);
 }
 
 
-void testForXMLMemoryLeaks() {
 
-    SimTK::String inFile =
-        "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015.osim";
-
-    // Deserialize
-    OpenSim::Model model(inFile);
-    cout << endl << endl << "Rajagopal2015 Model loaded!" << endl << endl;
-
-    // Serialize with a new file name
-    SimTK::String outFile =
-    "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015_out.osim";
-    model.print(outFile);
-}
 
 
 //_____________________________________________________________________________
@@ -964,22 +934,11 @@ For ExponentialContact, the following things are tested:
 The HuntCrossleyForce class is tested elsewhere (e.g., see
 testContactGeometry.cpp and testForce.cpp). */
 int main(int argc, char** argv) {
-    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 
     // Register object types
     RegisterTypes_osimActuators();
 
-    // Check for mem leaks on a more complex model.
-    testForXMLMemoryLeaks();
-
-    // Intentional leak
-    //_CrtMemState memoryStateB4Intentional = {0};
-    //_CrtMemCheckpoint(&memoryStateB4Intentional);
-    //char* intentionalLeak = new char[11];
-    //_CrtMemDumpAllObjectsSince(&memoryStateB4Intentional);
-
-    //_CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
-    //_CrtMemState memoryStateB4Sim = {0};
+    // Create and execute the tester
     ExponentialContactTester *tester = new ExponentialContactTester;
     try {
         int status = tester->parseCommandLine(argc, argv);
@@ -989,32 +948,42 @@ int main(int argc, char** argv) {
         }
         tester->buildModel();
         tester->test();
-        //_CrtMemCheckpoint(&memoryStateB4Sim);
         tester->simulate();
     } catch (const OpenSim::Exception& e) {
         e.print(cerr);
         return 1;
     }
-    cout << "Done" << endl;
+
+    // Clean up
     delete tester;
     cout << endl << endl << endl;
     cout << "------------------------------------------------------" << endl;
     cout << endl << endl << endl;
-    //_CrtMemDumpAllObjectsSince(&memoryState);
-    //_CrtMemDumpAllObjectsSince(&memoryStateB4Sim);
-    char* intentionalLeak = new char[11];
-    //delete[] intentionalLeak;
-    //_CrtDumpMemoryLeaks();
-
-    //char* intentionalLeak = new char[11];
 
     return 0;
 }
 
-/**----------------------------------------------------------------------------
-* Useful memory leak detection commands for Windows:
-*
 
+
+
+/**----------------------------------------------------------------------------
+* Useful memory leak detection stuff for Windows:
+*
+/*
+#ifdef _DEBUG
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+// Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
+// allocations to be of _CLIENT_BLOCK type
+#else
+#define DBG_NEW new
+#endif
+
+#define _CRTDBG_MAP_ALLOC
+*/
+
+
+
+/*
 // Static variables sometimes look like leaks but are not actual leaks.
 // Leak detection for statics has to be done after main() completes. To ask
 // the Crt memory manager to check after main() completes, set the bits for
@@ -1030,5 +999,49 @@ int main(int argc, char** argv) {
     _CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
     ... the block of code to be tested ...
     _CrtMemDumpAllObjectsSince(&memoryState);
+
+*/
+
+
+/*
+
+void testForXMLMemoryLeaks() {
+
+    SimTK::String inFile =
+        "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015.osim";
+
+    // Deserialize
+    OpenSim::Model model(inFile);
+    cout << endl << endl << "Rajagopal2015 Model loaded!" << endl << endl;
+
+    // Serialize with a new file name
+    SimTK::String outFile =
+        "C:/Users/fcand/Documents/GitHub/opensim-models/Models/RajagopalModel/Rajagopal2015_out.osim";
+    model.print(outFile);
+}
+
+
+/* Part of main ...
+
+// Check for mem leaks on a more complex model.
+//testForXMLMemoryLeaks();
+
+// Intentional leak
+//_CrtMemState memoryStateB4Intentional = {0};
+//_CrtMemCheckpoint(&memoryStateB4Intentional);
+//char* intentionalLeak = new char[11];
+//_CrtMemDumpAllObjectsSince(&memoryStateB4Intentional);
+
+//_CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
+//_CrtMemState memoryStateB4Sim = {0};
+
+//char* intentionalLeak = new char[11];
+
+//_CrtMemDumpAllObjectsSince(&memoryState);
+//_CrtMemDumpAllObjectsSince(&memoryStateB4Sim);
+char* intentionalLeak = new char[11];
+//delete[] intentionalLeak;
+//_CrtDumpMemoryLeaks();
+
 
 */
