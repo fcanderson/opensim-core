@@ -58,11 +58,12 @@ using namespace std;
 using namespace OpenSim;
 
 //=============================================================================
-/** Class ExponentialContactTester provides a scope and framework for
-evaluating and testing the ExponentialContact class. Using a testing class, as
-opposed to just a main() and C-style procedures, gets a lot of variables out
-of the global scope and allows for more structured memory management. */
-class ExponentialContactTester
+/** Class ContactPerformanceTester provides a scope and framework for
+evaluating the performance of the ExponentialContact class relative to the
+HuntCrossleyContact. Using this class, as  opposed to just a main() and
+C-style procedures, gets a lot of variables out of the global scope and allows
+for more structured memory management. */
+class ContactPerformanceTester
 {
 public:
     // Contact choices
@@ -84,7 +85,7 @@ public:
     };
 
     // Constructor
-    ExponentialContactTester() {
+    ContactPerformanceTester() {
         corner[0] = Vec3( hs, -hs,  hs);
         corner[1] = Vec3( hs, -hs, -hs);
         corner[2] = Vec3(-hs, -hs, -hs);
@@ -96,7 +97,7 @@ public:
     };
 
     // Destructor
-    ~ExponentialContactTester() {
+    ~ContactPerformanceTester() {
         if (model) {
             //model->disownAllComponents();  // See note just below.
             delete model;
@@ -130,12 +131,12 @@ public:
     void setForceDataHeader();
 
     // Test stuff not covered elsewhere.
-    void test();
-    void testParameters();
-    void testModelSerialization();
-    void printDiscreteVariableAbstractValue(const string& pathName,
-        const AbstractValue& value) const;
-    void testDiscreteVariables(State& state, const ForceSet& fSet);
+    //void test();
+    //void testParameters();
+    //void testModelSerialization();
+    //void printDiscreteVariableAbstractValue(const string& pathName,
+    //    const AbstractValue& value) const;
+    //void testDiscreteVariables(State& state, const ForceSet& fSet);
 
     // Simulation
     void setInitialConditions(SimTK::State& state,
@@ -178,11 +179,11 @@ public:
     // Reporters
     StatesTrajectoryReporter* statesReporter{nullptr};
 
-}; // End class ExponentialContactTester declarations
+}; // End class ContactPerformanceTester declarations
 
 //_____________________________________________________________________________
 int
-ExponentialContactTester::
+ContactPerformanceTester::
 parseCommandLine(int argc, char** argv)
 {
     std::string option;
@@ -236,7 +237,7 @@ parseCommandLine(int argc, char** argv)
 }
 //_____________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 printUsage()
 {
     cout << endl << "Usage:" << endl;
@@ -264,7 +265,7 @@ printUsage()
 }
 //_____________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 printConditions() {
     std::string modelDes;
     std::string contactDes;
@@ -311,7 +312,7 @@ printConditions() {
 //_____________________________________________________________________________
 // Build the model
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 buildModel()
 {
     // Create the bodies
@@ -388,7 +389,7 @@ buildModel()
 }
 //______________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 setForceDataHeader()
 {
     fxData.setName("fx");
@@ -405,7 +406,7 @@ setForceDataHeader()
 }
 //______________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 setForceData(double t, const SimTK::Vec3& point, const SimTK::Vec3& force)
 {
     SimTK::Vector_<double> data(6);
@@ -418,7 +419,7 @@ setForceData(double t, const SimTK::Vec3& point, const SimTK::Vec3& force)
 }
 //______________________________________________________________________________
 OpenSim::Body*
-ExponentialContactTester::
+ContactPerformanceTester::
 addBlock(const std::string& suffix)
 {
     Ground& ground = model->updGround();
@@ -442,7 +443,7 @@ addBlock(const std::string& suffix)
 }
 //______________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 addExponentialContact(OpenSim::Body* block)
 {
     Ground& ground = model->updGround();
@@ -473,7 +474,7 @@ addExponentialContact(OpenSim::Body* block)
 }
 //______________________________________________________________________________
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 addHuntCrossleyContact(OpenSim::Body* block)
 {
     Ground& ground = model->updGround();
@@ -516,7 +517,7 @@ addHuntCrossleyContact(OpenSim::Body* block)
 // dz allows for the body to be shifted along the z axis. This is useful for
 // displacing the Exp and Hunt models.
 void
-ExponentialContactTester::
+ContactPerformanceTester::
 setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
     double dz)
 {
@@ -587,224 +588,10 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
     }
 }
 
-//-----------------------------------------------------------------------------
-// TESTING
-//-----------------------------------------------------------------------------
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
-test()
-{
-    // Don't run tests if the only contact is Hunt-Crossley
-    if (whichContact == Hunt) return;
-
-    testParameters();
-    testModelSerialization();
-    //testStatesDocument();
-}
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
-testParameters()
-{
-    // Check current properties/parameters for all springs
-    for (int i = 0; i < n; i++) {
-        sprEC[i]->assertPropertiesAndParametersEqual();
-    }
-
-    // Pick just one contact instance to manipulate.
-    ExponentialContact& spr = *sprEC[0];
-
-    // Save the starting parameters
-    SimTK::ExponentialSpringParameters p0 = spr.getParameters();
-
-    // Change the properties systematically
-    SimTK::ExponentialSpringParameters p1 = p0;
-
-    // Shape
-    double delta = 0.1;
-    Vec3 d;
-    p1.getShapeParameters(d[0], d[1], d[2]);
-    p1.setShapeParameters(d[0] + delta, d[1], d[2]);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setShapeParameters(d[0], d[1] + delta, d[2]);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setShapeParameters(d[0], d[1], d[2] + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Normal Viscosity
-    double value;
-    value = p1.getNormalViscosity();
-    p1.setNormalViscosity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Friction Elasticity
-    value = p1.getFrictionElasticity();
-    p1.setFrictionElasticity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Friction Viscosity
-    value = p1.getFrictionViscosity();
-    p1.setFrictionViscosity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Settle Velocity
-    value = p1.getSettleVelocity();
-    p1.setSettleVelocity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Initial Coefficients of Friction
-    double mus = p1.getInitialMuStatic();
-    double muk = p1.getInitialMuKinetic();
-    p1.setInitialMuStatic(muk - delta);  // Changes muk also
-    mus = p1.getInitialMuStatic();
-    muk = p1.getInitialMuKinetic();
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setInitialMuKinetic(mus + delta); // Changes mus also
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Return to the starting parameters
-    spr.setParameters(p0);
-    spr.assertPropertiesAndParametersEqual();
-}
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
-testModelSerialization() {
-    // Serialize the current model
-    std::string fileName = "BouncingBlock_ExponentialContact_Serialized.osim";
-    model->print(fileName);
-    ExponentialSpringParameters p = sprEC[0]->getParameters();
-
-    // Deserialize the model
-    Model modelCopy(fileName);
-
-    // Get the 0th contact instance
-    ExponentialContact* spr = sprEC[0];
-    ExponentialContact* sprCopy = dynamic_cast<ExponentialContact*>(
-        &modelCopy.updForceSet().get(spr->getName()));
-    ExponentialSpringParameters pCopy = sprCopy->getParameters();
-
-    // Parameters should be equal
-    SimTK_ASSERT_ALWAYS(pCopy == p,
-        "Deserialized parameters are not equal to original parameters.");
-}
 
 //_____________________________________________________________________________
 void
-ExponentialContactTester::
-printDiscreteVariableAbstractValue(const string& pathName,
-    const AbstractValue& value) const
-{
-    cout << pathName << " = type{" << value.getTypeName() << "} ";
-    cout << value << " = ";
-
-    // Switch depending on the type
-    if (SimTK::Value<double>::isA(value)) {
-        double x = SimTK::Value<double>::downcast(value);
-        cout << x << endl;
-    } else if (SimTK::Value<Vec3>::isA(value)) {
-        Vec3 x = SimTK::Value<Vec3>::downcast(value);
-        cout << x << endl;
-    }
-}
-
-//_____________________________________________________________________________
-// The only types that are handled are double and Vec3 at this point.
-// The significant changes in how Discrete Variables are handled are:
-//      1. Values are now not assumed to be doubles but are AbstractValues.
-//      2. Discrete variables allocated external to OpenSim are permitted.
-//      3. Discrete variables may be accessed via the Component API by
-//      specifying the path (e.g., path = "/forceset/Exp0/anchor").
-void
-ExponentialContactTester::
-testDiscreteVariables(State& state, const ForceSet& fSet) {
-
-    // Get the names
-    OpenSim::Array<std::string> names = fSet.getDiscreteVariableNames();
-
-    // Loop
-    int n = names.size();
-    for (int i = 0; i < n; ++i) {
-
-        // Print values for debugging purposes.
-        AbstractValue& valAbstract =
-            fSet.updDiscreteVariableAbstractValue(state, names[i]);
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Declarations
-        double tol = 1.0e-6;
-        double deltaDbl = 0.1;
-        Vec3 deltaVec3(deltaDbl);
-        double valStartDbl{NaN};
-        Vec3 valStartVec3{NaN};
-
-        // Perturb
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                SimTK::Value<double>::updDowncast(valAbstract);
-            valStartDbl = valDbl;
-            valDbl = valStartDbl + deltaDbl;
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                    SimTK::Value<Vec3>::updDowncast(valAbstract);
-            valStartVec3 = valVec3.get();
-            valVec3 = valStartVec3 + deltaVec3;
-        }
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Check that the value changed correctly
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                    SimTK::Value<double>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valDbl.get(), valStartDbl + deltaDbl, tol);
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                    SimTK::Value<Vec3>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valVec3.get(), valStartVec3 + deltaVec3, tol);
-        }
-
-        // Restore the starting value
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                    SimTK::Value<double>::updDowncast(valAbstract);
-            valDbl = valStartDbl;
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                    SimTK::Value<Vec3>::updDowncast(valAbstract);
-            valVec3 = valStartVec3;
-        }
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Check that the value was correctly restored
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                    SimTK::Value<double>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valDbl.get(), valStartDbl, tol);
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                    SimTK::Value<Vec3>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valVec3.get(), valStartVec3, tol);
-        }
-
-    }
-
-}
-
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
+ContactPerformanceTester::
 simulate()
 {
     // Initialize the state
@@ -823,14 +610,6 @@ simulate()
     // Reset the elastic anchor point for each ExponentialContact instance
     ForceSet& fSet = model->updForceSet();
     ExponentialContact::resetAnchorPoints(fSet, state);
-
-    // Check the Component API for discrete states.
-    int n = fSet.getSize();
-    try {
-        testDiscreteVariables(state, fSet);
-    } catch (const std::exception& e) {
-        cout << e.what() << endl;
-    }
 
     // Integrate
     Manager manager(*model);
@@ -940,7 +719,7 @@ int main(int argc, char** argv) {
     RegisterTypes_osimActuators();
 
     // Create and execute the tester
-    ExponentialContactTester *tester = new ExponentialContactTester;
+    ContactPerformanceTester *tester = new ContactPerformanceTester;
     try {
         int status = tester->parseCommandLine(argc, argv);
         if (status < 0) {
@@ -948,7 +727,6 @@ int main(int argc, char** argv) {
             return 1;
         }
         tester->buildModel();
-        tester->test();
         tester->simulate();
     } catch (const OpenSim::Exception& e) {
         e.print(cerr);
