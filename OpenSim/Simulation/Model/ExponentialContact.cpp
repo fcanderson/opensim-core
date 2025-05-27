@@ -107,7 +107,7 @@ updateParameters() {
 // Having to do a little extra bookkeeping (i.e., storing properties values
 // twice [once in the Properties and once in _stkparams]) is justified
 // by not having to rewrite a whole bunch of additional accessor methods.
-// All parameter set/gets go through the SimTK::ExponentialSpringParameters
+// All parameter sets/gets go through the SimTK::ExponentialSpringParameters
 // interface (i.e., through _stkparams).
 void
 ExponentialContact::Parameters::
@@ -196,13 +196,16 @@ extendConnectToModel(OpenSim::Model& model) {
                 "./bodyset/" + bodyName));
 }
 //_____________________________________________________________________________
+// This method is where the actual underlying contact force subsystem
+// (i.e., SimTK::ExponentialSpringForce) is constructed and added to the
+// OpenSim::Model (wrapped by OpenSim::ExponentialContact).
 void
 ExponentialContact::
 extendAddToSystem(SimTK::MultibodySystem& system) const {
     // Extend the OpenSim::Force parent
     Super::extendAddToSystem(system);
 
-    // Construct the SimTK::ExponentialContact object
+    // Construct the SimTK::ExponentialSpringForce object
     SimTK::GeneralForceSubsystem& forces = _model->updForceSubsystem();
     const SimTK::Transform& XContactPlane = get_contact_plane_transform();
     const SimTK::Vec3& station = get_body_station();
@@ -256,6 +259,10 @@ extendRealizeTopology(SimTK::State& state) const {
     // If not, then it is possible that getMuStaticStateIndex() will
     // return a bad index.
     //
+    // Or, perhaps the call above to Super::extendRealizeTopology(state)
+    // ensures that the SimTK::ExponentialSpringForce::realizeTopology()
+    // has been called before this method is executed.
+    //
     // What I can confirm is that, so far, the indices in multiple tests have
     // been assigned correctly.
     //
@@ -298,6 +305,12 @@ resetAnchorPoint(SimTK::State& state) const {
     _spr->resetAnchorPoint(state);
 }
 //_____________________________________________________________________________
+// There might be a more computationally efficient way to do reset the anchor
+// points of all ExponentialContact instances in a ForceSet (right now this
+// method loops through all instancesin the force set and does a dynamic cast,
+// but this is a simple and thorough way to do it. The computational cost
+// shouldn't be an issue because this method is usually only called once at
+// the beginning of a simulation.
 void
 ExponentialContact::
 resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
@@ -319,22 +332,12 @@ resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
 // ACCESSORS for properties
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
-void ExponentialContact::
-setContactPlaneTransform(const SimTK::Transform& XContactPlane) {
-    set_contact_plane_transform(XContactPlane);
-}
-//_____________________________________________________________________________
-const SimTK::Transform&
-ExponentialContact::getContactPlaneTransform() const {
-    return get_contact_plane_transform();
-}
-
-//_____________________________________________________________________________
 void
 ExponentialContact::
 setParameters(const SimTK::ExponentialSpringParameters& params) {
     ExponentialContact::Parameters& p = upd_contact_parameters();
     p.setSimTKParameters(params);
+    // Push the new parameters to the SimTK::ExponentialSpringForce instance
     // The following call will invalidate the System at Stage::Topology
     if (_spr != NULL) _spr->setParameters(params);
 }

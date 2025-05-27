@@ -330,32 +330,58 @@ public:
     // Accessors for properties
     //-------------------------------------------------------------------------
     /** Set the transform that specifies the location and orientation of the
-    contact plane in the Ground frame. */
-    void setContactPlaneTransform(const SimTK::Transform& X_GP);
+    contact plane in the Ground frame.
+    Note that the value of the altered property is not pushed to the underlying
+    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
+    simulation or analysis. To have an effect, a new ExponentialContact
+    instance must be constructed with the desired value of the poperty.
+    The only reason to call this method is so that a Model can be serialized
+    with the new desired property value. */
+    void setContactPlaneTransform(const SimTK::Transform& X_GP) {
+        set_contact_plane_transform(X_GP);
+    }
     /** Get the transform that specifies the location and orientation of the
     contact plane in the Ground frame. */
-    const SimTK::Transform& getContactPlaneTransform() const;
+    const SimTK::Transform& getContactPlaneTransform() const {
+        return get_contact_plane_transform();
+    }
 
-    /** Set the name of the body to which this force is applied. */
+    /** Set the name of the body to which this force is applied.
+    Note that the value of the altered property is not pushed to the underlying
+    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
+    simulation or analysis. To have an effect, a new ExponentialContact
+    instance must be constructed with the desired value of the poperty.
+    The only reason to call this method is so that a Model can be serialized
+    with the new desired property value. */
     void setBodyName(const std::string& bodyName) {
         set_body_name(bodyName);
     }
     /** Get the name of the body to which this force is applied. */
     const std::string& getBodyName() const { return get_body_name(); }
 
-    /** Set the point on the body at which this force is applied. */
+    /** Set the point on the body at which this force is applied.
+    Note that the value of the altered property is not pushed to the underlying
+    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
+    simulation or analysis. To have an effect, a new ExponentialContact
+    instance must be constructed with the desired value of the poperty.
+    The only reason to call this method is so that a Model can be serialized
+    with the new desired property value. */
     void setBodyStation(const SimTK::Vec3& station) {
         set_body_station(station);
     }
     /** Get the point on the body at which this force is applied. */
     const SimTK::Vec3& getBodyStation() const { return get_body_station(); }
 
-    /** Set the customizable Topology-stage spring parameters. Calling this
-    method will invalidate the SimTK::System at Stage::Toplogy. */
+    /** Set the customizable Topology-stage spring parameters.
+    Unlike the preceding set methods for the other properties, the parameters
+    WILL be pushed to the underlying SimTK::ExponentialSpringForce instance.
+    However, calling this method will invalidate the SimTK::System at
+    Stage::Toplogy and, thus, require the SimTK::System to be re-realized
+    before simulation or analysis can be resumed. */
     void setParameters(const SimTK::ExponentialSpringParameters& params);
     /** Get the customizable Topology-stage spring parameters. Use the copy
-    constructor on the returned reference to create an object that can
-    be altered. */
+    constructor or the assignment operator on the returned reference to create
+    an parameters object that can be modified. */
     const SimTK::ExponentialSpringParameters& getParameters() const;
 
     //-------------------------------------------------------------------------
@@ -369,15 +395,16 @@ public:
 
     /** Get the name used for the discrete state representing the static
     coefficient of friction (μₛ). This name is used to access informattion
-    related to μₛ via the OpenSim::Component API. For example, see
-    Component::getDiscreteVariableValue(). */
+    related to μₛ via the OpenSim::Component API.
+    See Component::getDiscreteVariableValue(). */
     std::string getMuStaticDiscreteStateName() const { return "mu_static"; }
 
     /** Set the static coefficient of friction (μₛ) for this exponential
     spring. μₛ is a discrete state. The value of μₛ is held in the System's
-    State object. Unlike the parameters managed by ExponentialSpringParameters,
-    μₛ can be set at any time during a simulation. A change to μₛ will
-    invalidate the System at Stage::Dynamics, but not at Stage::Topology.
+    State object. Unlike the parameters managed by
+    SimTK::ExponentialSpringParameters, μₛ can be set at any time during a
+    simulation. A change to μₛ will invalidate the System at Stage::Dynamics,
+    but not at Stage::Topology.
     @param state State object that will be modified.
     @param mus %Value of the static coefficient of friction. No upper bound.
     0.0 ≤ μₛ. If μₛ < μₖ, μₖ is set equal to μₛ. */
@@ -389,7 +416,7 @@ public:
     SimTK::Real getMuStatic(const SimTK::State& state) const;
 
     /** Get the name used for the discrete state representing the kinetic
-    coefficient of friction (μₖ). This name is the used to access informattion
+    coefficient of friction (μₖ). This name is used to access informattion
     related to μₖ via the OpenSim::Component API. For example, see
     Component::getDiscreteVariableValue(). */
     std::string getMuKineticDiscreteStateName() const { return "mu_kinetic"; }
@@ -429,8 +456,10 @@ public:
 
     /** Get the position of the elastic anchor point (p₀) after it has been
     updated to be consistent with friction limits. p₀ is the spring zero of
-    the damped linear spring used in Friction Model 2. The system must be
-    realized to Stage::Dynamics to access this data.
+    the damped linear spring used in Friction Model 2. See the documentation
+    for SimTK::ExponentialSpringForce for a detailed description of the
+    friction model. The system must be realized to Stage::Dynamics to access
+    this data.
     @param state State object on which to base the calculations.
     @param inGround Flag for choosing the frame in which the returned quantity
     will be expressed. If true (the default), the quantity will be expressed
@@ -462,8 +491,8 @@ public:
     SimTK::Vec3 getNormalForceDampingPart(
         const SimTK::State& state, bool inGround = true) const;
 
-    /** Get the normal force. The system must be realized to Stage::Dynamics
-    to access this data.
+    /** Get the total normal force. The system must be realized to
+    Stage::Dynamics to access this data.
     @param state State object on which to base the calculations.
     @param inGround Flag for choosing the frame in which the returned quantity
     will be expressed. If true (the default), the quantity will be expressed
@@ -602,27 +631,42 @@ private:
 //=============================================================================
 // ExponentialContact::Parameters
 //=============================================================================
-/** This subclass helps manage the topology-stage parameters of an
-OpenSim::ExponentialContact object. It does not provide the interface for
-getting and setting contact parameters (directly anyway) but rather provides
-the infrastructure for making the underlying SimTK::ExponentialSpringForce and
-SimTK::ExponentialSpringParameters classes available in OpenSim.
+/** This subclass helps manage the topology-stage parameters of the underlying
+SimTK::ExponentialSpringForce instance. These parameters (e.g., elasticity,
+viscosity, etc.) determine the force-producing characteristics of the
+exponential spring force.
 
-More specifically, this class chiefly does 3 things:
-- Implements OpenSim Properties for most of the customizable contact
+This class does 3 things:
+
+- Implements an OpenSim Property for each of the customizable contact
 parameters of class OpenSim::ExponentialContact, enabling those parameters
-to be serialized and de-serialized from file.
+to be serialized and de-serialized to and from an OpenSim Model file.
+
 - Provides a member variable (_stkparams) for storing user-set parameters
-prior to the creation of an underlying SimTK::ExponentialSpringForce object.
+prior to the existance of the underlying SimTK::ExponentialSpringForce object.
 During model initialization, when the SimTK::ExponetialSpringForce object is
-constructed, the user-set parameters are then pushed to that object.
+constructed, the user-set properties/parameters are then pushed to that object.
+
 - Ensures that the values held by the OpenSim properties are kept consistent
 with the values held by a SimTK::ExponentialSpringParameters object.
 Depending on the circumstance, parameters are updated to match properties or
 properties are update to match parameters.
 
-To get or set values of the parameters managed by this class, you should use
-ExponentialContact::getParameters() and ExponentialContact::setParameters().
+To change the values of individual parameters programmatically:
+```
+    // Get a modifiable copy of the underlying parameter object
+    // (`exp_contact` is a instance of ExponentialContact)
+    SimTK::ExponentialSpringParameters p = exp_contact.getParameters();
+
+    // Make the desired changes to the copy using the appropropriate setters
+    p.setFrictionElasticity(kp);
+    p.setFrictionViscosity(kv);
+    ...
+
+    // Call ExponentialContact::setParameters() to push the new parameters
+    // to the underlying SimTK::ExponentialSpringForce object.
+    exp_contact.setParameters(p);
+```
 
 @author F. C. Anderson **/
 class ExponentialContact::Parameters : public Object {
@@ -646,6 +690,7 @@ public:
     OpenSim_DECLARE_PROPERTY(initial_mu_kinetic, double,
         "Initial value of the kinetic coefficient of friction.");
 
+public:
     /** Default constructor. */
     Parameters();
 
