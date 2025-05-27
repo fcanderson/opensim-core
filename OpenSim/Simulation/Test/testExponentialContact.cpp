@@ -123,7 +123,7 @@ public:
 
     // Test stuff not covered elsewhere.
     void test();
-    void testParameters();
+    void checkParametersAndPropertiesEqual(const ExponentialContact& spr) const;
     void testModelSerialization();
     void printDiscreteVariableAbstractValue(const string& pathName,
         const AbstractValue& value) const;
@@ -137,8 +137,6 @@ public:
     //-------------------------------------------------------------------------
     // Member variables
     //-------------------------------------------------------------------------
-private:
-
     // Simulation related
     double integ_accuracy{1.0e-5};
     double dt_max{0.03};
@@ -148,12 +146,10 @@ private:
     const static int n{8};
     const double hs{0.10}; // half of a side of a cube (like a radius)
     Vec3 corner[n];
-
     // Command line options and their defaults
     ContactChoice whichContact{Exp};
     InitialConditionsChoice whichInit{Slide};
     bool noDamp{false};
-
     // Model and parts
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
@@ -397,15 +393,7 @@ simulate()
 // TESTING
 //-----------------------------------------------------------------------------
 //_____________________________________________________________________________
-void
-ExponentialContactTester::
-test()
-{
-    testParameters();
-    testModelSerialization();
-    //testStatesDocument();
-}
-//_____________________________________________________________________________
+/*
 void
 ExponentialContactTester::
 testParameters()
@@ -480,6 +468,48 @@ testParameters()
     // Return to the starting parameters
     spr.setParameters(p0);
     spr.assertPropertiesAndParametersEqual();
+}
+*/
+
+//_____________________________________________________________________________
+void
+ExponentialContactTester::
+checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
+    // Get the OpenSim properties
+    const ExponentialContact::Parameters& a = spr.get_contact_parameters();
+    const SimTK::ExponentialSpringParameters& b = spr.getParameters();
+
+    const SimTK::Vec3& vecA = a.get_exponential_shape_parameters();
+    SimTK::Vec3 vecB;
+    b.getShapeParameters(vecB[0], vecB[1], vecB[2]);
+    CHECK(vecA[0] == vecB[0]);
+    CHECK(vecA[1] == vecB[1]);
+    CHECK(vecA[2] == vecB[2]);
+
+    double valA, valB;
+    valA = a.get_normal_viscosity();
+    valB = b.getNormalViscosity();
+    CHECK(valA == valB);
+
+    valA = a.get_friction_elasticity();
+    valB = b.getFrictionElasticity();
+    CHECK(valA == valB);
+
+    valA = a.get_friction_viscosity();
+    valB = b.getFrictionViscosity();
+    CHECK(valA == valB);
+
+    valA = a.get_settle_velocity();
+    valB = b.getSettleVelocity();
+    CHECK(valA == valB);
+
+    valA = a.get_initial_mu_static();
+    valB = b.getInitialMuStatic();
+    CHECK(valA == valB);
+
+    valA = a.get_initial_mu_kinetic();
+    valB = b.getInitialMuKinetic();
+    CHECK(valA == valB);
 }
 //_____________________________________________________________________________
 void
@@ -611,7 +641,127 @@ TEST_CASE("A")
 
 }
 
-TEST_CASE("B")
+//_____________________________________________________________________________
+// Test that the underlying spring parameters of an ExponentialContact instance
+// can be set and retrieved properly. In addition, verify that the
+// corresponding OpenSim properties and the underlying parameters that belong
+// to the SimTK::ExponentialSpringForce instance are kept consistent with
+// one another.
+TEST_CASE("Spring Parameters")
 {
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
 
+    // Check current properties/parameters of all springs are equal.
+    for (int i = 0; i < tester.n; i++) {
+        tester.checkParametersAndPropertiesEqual(*tester.sprEC[i]);
+    }
+
+    // Pick a contact instance to manipulate.
+    ExponentialContact& spr = *tester.sprEC[0];
+
+    // Save the starting parameters.
+    // Note that pi is not a reference. The underlying parameters of spr can
+    // be changed without affecting pi.
+    const SimTK::ExponentialSpringParameters pi = spr.getParameters();
+
+    // Create a copy of the parameters that will be systematically modified.
+    SimTK::ExponentialSpringParameters pf = pi;
+
+    // Test equality of the Paremeter instances.
+    CHECK(pf == pi);
+
+    // Exponential Shape
+    double delta = 0.1;
+    Vec3 di, df;
+    pf.getShapeParameters(di[0], di[1], di[2]);
+    // d[0]
+    pf.setShapeParameters(di[0] + delta, di[1], di[2]);
+    tester.checkParametersAndPropertiesEqual(spr);
+    pf.getShapeParameters(df[0], df[1], df[2]);
+    CHECK(df[0] == di[0] + delta);
+    CHECK(df[1] == di[1]);
+    CHECK(df[2] == di[2]);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+    // d[1]
+    pf.setShapeParameters(di[0], di[1] + delta, di[2]);
+    tester.checkParametersAndPropertiesEqual(spr);
+    pf.getShapeParameters(df[0], df[1], df[2]);
+    CHECK(df[0] == di[0]);
+    CHECK(df[1] == di[1] + delta);
+    CHECK(df[2] == di[2]);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+    // d[2]
+    pf.setShapeParameters(di[0], di[1], di[2] + delta);
+    tester.checkParametersAndPropertiesEqual(spr);
+    pf.getShapeParameters(df[0], df[1], df[2]);
+    CHECK(df[0] == di[0]);
+    CHECK(df[1] == di[1]);
+    CHECK(df[2] == di[2] + delta);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+    // all at once
+    pf.setShapeParameters(di[0] + delta, di[1] + delta, di[2] + delta);
+    tester.checkParametersAndPropertiesEqual(spr);
+    pf.getShapeParameters(df[0], df[1], df[2]);
+    CHECK(df[0] == di[0] + delta);
+    CHECK(df[1] == di[1] + delta);
+    CHECK(df[2] == di[2] + delta);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Normal Viscosity
+    double vali, valf;
+    vali = pi.getNormalViscosity();
+    pf.setNormalViscosity(vali + delta);
+    tester.checkParametersAndPropertiesEqual(spr);
+    valf = pf.getNormalViscosity();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+
+
+    // Friction Elasticity
+    vali = pi.getFrictionElasticity();
+    pf.setFrictionElasticity(vali+ delta);
+    tester.checkParametersAndPropertiesEqual(spr);
+    valf = pf.getFrictionElasticity();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pi);
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Friction Viscosity
+    vali = pi.getFrictionViscosity();
+    p1.setFrictionViscosity(value + delta);
+    spr.setParameters(p1);
+    spr.assertPropertiesAndParametersEqual();
+
+    // Settle Velocity
+    value = p1.getSettleVelocity();
+    p1.setSettleVelocity(value + delta);
+    spr.setParameters(p1);
+    spr.assertPropertiesAndParametersEqual();
+
+    // Initial Coefficients of Friction
+    double mus = p1.getInitialMuStatic();
+    double muk = p1.getInitialMuKinetic();
+    p1.setInitialMuStatic(muk - delta);  // Changes muk also
+    mus = p1.getInitialMuStatic();
+    muk = p1.getInitialMuKinetic();
+    SimTK_TEST_EQ(mus, muk);
+    spr.setParameters(p1);
+    spr.assertPropertiesAndParametersEqual();
+    p1.setInitialMuKinetic(mus + delta); // Changes mus also
+    SimTK_TEST_EQ(mus, muk);
+    spr.setParameters(p1);
+    spr.assertPropertiesAndParametersEqual();
+
+    // Return to the starting parameters
+    spr.setParameters(p0);
+    spr.assertPropertiesAndParametersEqual();
 }
