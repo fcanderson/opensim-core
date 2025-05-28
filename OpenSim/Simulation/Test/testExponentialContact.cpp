@@ -636,6 +636,46 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
 }
 
 //_____________________________________________________________________________
+// Test that the properties of an ExponentialContact instance can be set
+// and retrieved properly. These properties are members ExponentialContact.
+// The spring parameters are encapsulated in class
+// ExponentialContact::Parameters. The API for those parameters are tested
+// in the test case "Spring Parameters" below.
+TEST_CASE("Property Accessors")
+{
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
+
+    // Contact Plane
+    const SimTK::Transform xformi =
+        tester.sprEC[0]->getContactPlaneTransform();
+    SimTK::Rotation R;
+    R.setRotationFromAngleAboutX(1.234);
+    SimTK::Transform xformp;
+    xformp.set(R, Vec3(0.2,0.2,0.2));
+    tester.sprEC[0]->setContactPlaneTransform(xformp);
+    SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
+    CHECK(xformf.p() == xformp.p());
+    CHECK(xformf.R() == xformp.R());
+
+    // Body Name
+    const std::string bodyNamei = tester.sprEC[0]->getBodyName();
+    tester.sprEC[0]->setBodyName(bodyNamei + "new");
+    const std::string bodyNamef = tester.sprEC[0]->getBodyName();
+    CHECK(bodyNamef == bodyNamei + "new");
+
+    // Body Station
+    Vec3 delta(0.1, 0.2, 0.3);
+    const SimTK::Vec3 stationi = tester.sprEC[0]->getBodyStation();
+    tester.sprEC[0]->setBodyStation(stationi + delta);
+    const SimTK::Vec3 stationf = tester.sprEC[0]->getBodyStation();
+    CHECK(stationf[0] == stationi[0] + delta[0]);
+    CHECK(stationf[1] == stationi[1] + delta[1]);
+    CHECK(stationf[2] == stationi[2] + delta[2]);
+}
+
+//_____________________________________________________________________________
 // Test that the discrete states of an ExponentialContact instance can be set
 // and retrieved properly.
 TEST_CASE("Discrete State Accessors")
@@ -695,6 +735,8 @@ TEST_CASE("Discrete State Accessors")
     // so it is not settable in a simple way. See comments for "sliding" above.
     // The position of an anchar point can, however, be set to correspond
     // exactly to the position of the body station of its spring.
+    // Note - this is also a good check for 1) resetAnchorPoint(),
+    // 2) getAnchorPointPosition(), and 3) getStationPosition().
     state.setTime(0.0); // Resets the system to Stage::Time
     CHECK_THROWS(veci = spr.getAnchorPointPosition(state));
     spr.resetAnchorPoint(state);
