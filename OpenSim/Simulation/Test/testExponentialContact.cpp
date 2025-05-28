@@ -678,7 +678,6 @@ TEST_CASE("Spring Parameters")
     pf.getShapeParameters(di[0], di[1], di[2]);
     // d[0]
     pf.setShapeParameters(di[0] + delta, di[1], di[2]);
-    tester.checkParametersAndPropertiesEqual(spr);
     pf.getShapeParameters(df[0], df[1], df[2]);
     CHECK(df[0] == di[0] + delta);
     CHECK(df[1] == di[1]);
@@ -687,7 +686,6 @@ TEST_CASE("Spring Parameters")
     tester.checkParametersAndPropertiesEqual(spr);
     // d[1]
     pf.setShapeParameters(di[0], di[1] + delta, di[2]);
-    tester.checkParametersAndPropertiesEqual(spr);
     pf.getShapeParameters(df[0], df[1], df[2]);
     CHECK(df[0] == di[0]);
     CHECK(df[1] == di[1] + delta);
@@ -696,7 +694,6 @@ TEST_CASE("Spring Parameters")
     tester.checkParametersAndPropertiesEqual(spr);
     // d[2]
     pf.setShapeParameters(di[0], di[1], di[2] + delta);
-    tester.checkParametersAndPropertiesEqual(spr);
     pf.getShapeParameters(df[0], df[1], df[2]);
     CHECK(df[0] == di[0]);
     CHECK(df[1] == di[1]);
@@ -705,12 +702,13 @@ TEST_CASE("Spring Parameters")
     tester.checkParametersAndPropertiesEqual(spr);
     // all at once
     pf.setShapeParameters(di[0] + delta, di[1] + delta, di[2] + delta);
-    tester.checkParametersAndPropertiesEqual(spr);
     pf.getShapeParameters(df[0], df[1], df[2]);
     CHECK(df[0] == di[0] + delta);
     CHECK(df[1] == di[1] + delta);
     CHECK(df[2] == di[2] + delta);
-    spr.setParameters(pi);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
     tester.checkParametersAndPropertiesEqual(spr);
 
     // Normal Viscosity
@@ -722,46 +720,81 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     tester.checkParametersAndPropertiesEqual(spr);
-    spr.setParameters(pi);
+    spr.setParameters(pi); // now back to original
     tester.checkParametersAndPropertiesEqual(spr);
-
 
     // Friction Elasticity
     vali = pi.getFrictionElasticity();
-    pf.setFrictionElasticity(vali+ delta);
-    tester.checkParametersAndPropertiesEqual(spr);
+    pf.setFrictionElasticity(vali + delta);
     valf = pf.getFrictionElasticity();
     CHECK(valf == vali + delta);
-    spr.setParameters(pi);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
     tester.checkParametersAndPropertiesEqual(spr);
 
     // Friction Viscosity
     vali = pi.getFrictionViscosity();
-    p1.setFrictionViscosity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
+    pf.setFrictionViscosity(vali + delta);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
 
     // Settle Velocity
-    value = p1.getSettleVelocity();
-    p1.setSettleVelocity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
+    vali = pi.getSettleVelocity();
+    pf.setSettleVelocity(vali + delta);
+    valf = pf.getSettleVelocity();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
 
-    // Initial Coefficients of Friction
-    double mus = p1.getInitialMuStatic();
-    double muk = p1.getInitialMuKinetic();
-    p1.setInitialMuStatic(muk - delta);  // Changes muk also
-    mus = p1.getInitialMuStatic();
-    muk = p1.getInitialMuKinetic();
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setInitialMuKinetic(mus + delta); // Changes mus also
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
+    // Initial Static Coefficient of Friction
+    vali = pi.getInitialMuStatic();
+    pf.setInitialMuStatic(vali + delta);
+    valf = pf.getInitialMuStatic();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
 
-    // Return to the starting parameters
-    spr.setParameters(p0);
-    spr.assertPropertiesAndParametersEqual();
+    // Initial Kinetic Coefficient of Friction
+    vali = pi.getInitialMuKinetic();
+    pf.setInitialMuKinetic(vali - delta);
+    valf = pf.getInitialMuKinetic();
+    CHECK(valf == vali - delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Make a change to mus that should also change muk
+    double musi = pi.getInitialMuStatic();
+    double muki = pi.getInitialMuKinetic();
+    pf.setInitialMuStatic(muki - delta);  // should enforce muk <= mus
+    double musf = pf.getInitialMuStatic();
+    double mukf = pf.getInitialMuKinetic();
+    CHECK(musf == muki - delta);
+    CHECK(mukf == musf);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Make a change to musk that should also change mus
+    musi = pi.getInitialMuStatic();
+    muki = pi.getInitialMuKinetic();
+    pf.setInitialMuKinetic(musi + delta);  // should enforce mus >= musk
+    musf = pf.getInitialMuStatic();
+    mukf = pf.getInitialMuKinetic();
+    CHECK(mukf == musi + delta);
+    CHECK(musf == mukf);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
 }
