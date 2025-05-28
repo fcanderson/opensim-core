@@ -635,10 +635,75 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
 
 }
 
-
-TEST_CASE("A")
+//_____________________________________________________________________________
+// Test that the discrete states of an ExponentialContact instance can be set
+// and retrieved properly.
+TEST_CASE("Discrete State Accessors")
 {
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
 
+    // Realize the model and get the state.
+    SimTK::State& state = tester.model->initSystem();
+
+    // Check current properties/parameters of all springs are equal.
+    for (int i = 0; i < tester.n; i++) {
+        tester.checkParametersAndPropertiesEqual(*tester.sprEC[i]);
+    }
+
+    // Pick a contact instance to manipulate.
+    ExponentialContact& spr = *tester.sprEC[0];
+
+    // Declarations
+    double deltaDbl = 0.1;
+    Vec3 deltaVec3(deltaDbl);
+    double vali{NaN}, valf{NaN};
+    Vec3 veci{NaN}, vecf{NaN};
+
+    // Static Friction Coefficient
+    vali = spr.getMuStatic(state);
+    spr.setMuStatic(state, vali + deltaDbl);
+    valf = spr.getMuStatic(state);
+    CHECK(valf == vali + deltaDbl);
+
+    // Kinetic Friction Coefficient
+    vali = spr.getMuKinetic(state);
+    spr.setMuKinetic(state, vali + deltaDbl);
+    valf = spr.getMuKinetic(state);
+    CHECK(valf == vali + deltaDbl);
+
+    // Sliding
+    // Note that the "sliding" state is an auto-update discrete state and so
+    // it is not settable. It is only retrievable. The "sliding" state is
+    // updated by the ExponentialContact instance during simulation after each
+    // successful integration step.
+    // There are bounds (0 <= sliding <= 1.0) that can be checked, however.
+    // In addition, retrieving the sldiing state also requites the state to be
+    // realized to Stage::Dynamics or higher, so we can check that an
+    // exception is thrown if the state is not realized to that stage and
+    // a "get" is attempted.
+    state.setTime(0.0); // Resets the system to Stage::Time
+    CHECK_THROWS(vali = spr.getSliding(state));
+    tester.model->getMultibodySystem().realize(state, SimTK::Stage::Dynamics);
+    vali = spr.getSliding(state);
+    CHECK(vali >= 0.0);
+    CHECK(vali <= 1.0);
+
+    // Elastic Anchor Point
+    // Like sliding, the "anchor" state is an auto-update discrete state and
+    // so it is not settable in a simple way. See comments for "sliding" above.
+    // The position of an anchar point can, however, be set to correspond
+    // exactly to the position of the body station of its spring.
+    state.setTime(0.0); // Resets the system to Stage::Time
+    CHECK_THROWS(veci = spr.getAnchorPointPosition(state));
+    spr.resetAnchorPoint(state);
+    tester.model->getMultibodySystem().realize(state, SimTK::Stage::Dynamics);
+    veci = spr.getAnchorPointPosition(state);
+    vecf = spr.getStationPosition(state);
+    CHECK(vecf[0] == veci[0]);
+    // y won't be equal because the anchor point is on the contact plane
+    CHECK(vecf[2] == veci[2]);
 }
 
 //_____________________________________________________________________________
