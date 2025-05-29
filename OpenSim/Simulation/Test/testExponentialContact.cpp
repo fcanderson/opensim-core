@@ -230,12 +230,16 @@ addExponentialContact(OpenSim::Body* block)
         params.setInitialMuStatic(0.0);
     }
 
+
     // Place a spring at each of the 8 corners
     std::string name = "";
     for (int i = 0; i < n; ++i) {
         name = "Exp" + std::to_string(i);
+        Station* station = new Station(*block, corner[i]);
+        station->setName(fmt::format("corner_{}", i));
+        block->addComponent(station);
         sprEC[i] = new OpenSim::ExponentialContact(floorXForm,
-            block->getName(), corner[i], params);
+            *station, params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
     }

@@ -270,12 +270,14 @@ public:
     //-------------------------------------------------------------------------
     OpenSim_DECLARE_PROPERTY(contact_plane_transform, SimTK::Transform,
         "Orientation and location of the contact plane wrt Ground. The positive z-axis of the contact plane defines the normal.");
-    OpenSim_DECLARE_PROPERTY(body_name, std::string,
-        "Name of the Body to which the resultant contact force is applied.");
-    OpenSim_DECLARE_PROPERTY(body_station, SimTK::Vec3,
-        "Point on the body, expressed in the Body frame, at which the resultant contact force is applied.");
     OpenSim_DECLARE_PROPERTY(contact_parameters, ExponentialContact::Parameters,
         "Customizable topology-stage parameters.");
+
+    //-------------------------------------------------------------------------
+    // SOCKETS
+    //-------------------------------------------------------------------------
+    OpenSim_DECLARE_SOCKET(station, Station,
+        "The station at which the contact force is applied.");
 
     //-------------------------------------------------------------------------
     // Construction
@@ -291,12 +293,11 @@ public:
     operator that transforms a point of P (point_P) to that same point in
     space but measured from the Ground origin (G₀) and expressed in G
     (i.e., point_G = X_GP * point_P).
-    @param bodyName Name of the body to which the force is applied.
-    @param station Point on the body at which the force is applied.
+    @param station The frame-fixed station at which the force is applied.
     @param params Optional parameters object used to customize the
     topology-stage characteristics of the contact model. */
     explicit ExponentialContact(const SimTK::Transform& X_GP,
-        const std::string& bodyName, const SimTK::Vec3& station,
+        const Station& station,
         SimTK::ExponentialSpringParameters params =
         SimTK::ExponentialSpringParameters());
 
@@ -345,32 +346,6 @@ public:
     const SimTK::Transform& getContactPlaneTransform() const {
         return get_contact_plane_transform();
     }
-
-    /** Set the name of the body to which this force is applied.
-    Note that the value of the altered property is not pushed to the underlying
-    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
-    simulation or analysis. To have an effect, a new ExponentialContact
-    instance must be constructed with the desired value of the poperty.
-    The only reason to call this method is so that a Model can be serialized
-    with the new desired property value. */
-    void setBodyName(const std::string& bodyName) {
-        set_body_name(bodyName);
-    }
-    /** Get the name of the body to which this force is applied. */
-    const std::string& getBodyName() const { return get_body_name(); }
-
-    /** Set the point on the body at which this force is applied.
-    Note that the value of the altered property is not pushed to the underlying
-    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
-    simulation or analysis. To have an effect, a new ExponentialContact
-    instance must be constructed with the desired value of the poperty.
-    The only reason to call this method is so that a Model can be serialized
-    with the new desired property value. */
-    void setBodyStation(const SimTK::Vec3& station) {
-        set_body_station(station);
-    }
-    /** Get the point on the body at which this force is applied. */
-    const SimTK::Vec3& getBodyStation() const { return get_body_station(); }
 
     /** Set the customizable Topology-stage spring parameters.
     Unlike the preceding set methods for the other properties, the parameters
@@ -622,7 +597,6 @@ protected:
 private:
     void setNull();
     void constructProperties();
-    SimTK::ReferencePtr<const PhysicalFrame> _body;
     SimTK::ExponentialSpringForce* _spr{NULL};
 
 }; // END of class ExponentialContact
