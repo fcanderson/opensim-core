@@ -392,89 +392,6 @@ simulate()
     statesDocRe.serialize(filename02);
 }
 
-
-//-----------------------------------------------------------------------------
-// TESTING
-//-----------------------------------------------------------------------------
-//_____________________________________________________________________________
-/*
-void
-ExponentialContactTester::
-testParameters()
-{
-    // Check current properties/parameters for all springs
-    for (int i = 0; i < n; i++) {
-        sprEC[i]->assertPropertiesAndParametersEqual();
-    }
-
-    // Pick just one contact instance to manipulate.
-    ExponentialContact& spr = *sprEC[0];
-
-    // Save the starting parameters
-    SimTK::ExponentialSpringParameters p0 = spr.getParameters();
-
-    // Change the properties systematically
-    SimTK::ExponentialSpringParameters p1 = p0;
-
-    // Shape
-    double delta = 0.1;
-    Vec3 d;
-    p1.getShapeParameters(d[0], d[1], d[2]);
-    p1.setShapeParameters(d[0] + delta, d[1], d[2]);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setShapeParameters(d[0], d[1] + delta, d[2]);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setShapeParameters(d[0], d[1], d[2] + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Normal Viscosity
-    double value;
-    value = p1.getNormalViscosity();
-    p1.setNormalViscosity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Friction Elasticity
-    value = p1.getFrictionElasticity();
-    p1.setFrictionElasticity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Friction Viscosity
-    value = p1.getFrictionViscosity();
-    p1.setFrictionViscosity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Settle Velocity
-    value = p1.getSettleVelocity();
-    p1.setSettleVelocity(value + delta);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Initial Coefficients of Friction
-    double mus = p1.getInitialMuStatic();
-    double muk = p1.getInitialMuKinetic();
-    p1.setInitialMuStatic(muk - delta);  // Changes muk also
-    mus = p1.getInitialMuStatic();
-    muk = p1.getInitialMuKinetic();
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-    p1.setInitialMuKinetic(mus + delta); // Changes mus also
-    SimTK_TEST_EQ(mus, muk);
-    spr.setParameters(p1);
-    spr.assertPropertiesAndParametersEqual();
-
-    // Return to the starting parameters
-    spr.setParameters(p0);
-    spr.assertPropertiesAndParametersEqual();
-}
-*/
-
 //_____________________________________________________________________________
 void
 ExponentialContactTester::
@@ -639,10 +556,117 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
 
 }
 
-
-TEST_CASE("A")
+//_____________________________________________________________________________
+// Test that the properties of an ExponentialContact instance can be set
+// and retrieved properly. These properties are members ExponentialContact.
+// The spring parameters are encapsulated in class
+// ExponentialContact::Parameters. The API for those parameters are tested
+// in the test case "Spring Parameters" below.
+TEST_CASE("Property Accessors")
 {
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
 
+    // Contact Plane
+    const SimTK::Transform xformi =
+        tester.sprEC[0]->getContactPlaneTransform();
+    SimTK::Rotation R;
+    R.setRotationFromAngleAboutX(1.234);
+    SimTK::Transform xformp;
+    xformp.set(R, Vec3(0.2,0.2,0.2));
+    tester.sprEC[0]->setContactPlaneTransform(xformp);
+    SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
+    CHECK(xformf.p() == xformp.p());
+    CHECK(xformf.R() == xformp.R());
+
+    // Body Name
+    const std::string bodyNamei = tester.sprEC[0]->getBodyName();
+    tester.sprEC[0]->setBodyName(bodyNamei + "new");
+    const std::string bodyNamef = tester.sprEC[0]->getBodyName();
+    CHECK(bodyNamef == bodyNamei + "new");
+
+    // Body Station
+    Vec3 delta(0.1, 0.2, 0.3);
+    const SimTK::Vec3 stationi = tester.sprEC[0]->getBodyStation();
+    tester.sprEC[0]->setBodyStation(stationi + delta);
+    const SimTK::Vec3 stationf = tester.sprEC[0]->getBodyStation();
+    CHECK(stationf[0] == stationi[0] + delta[0]);
+    CHECK(stationf[1] == stationi[1] + delta[1]);
+    CHECK(stationf[2] == stationi[2] + delta[2]);
+}
+
+//_____________________________________________________________________________
+// Test that the discrete states of an ExponentialContact instance can be set
+// and retrieved properly.
+TEST_CASE("Discrete State Accessors")
+{
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
+
+    // Realize the model and get the state.
+    SimTK::State& state = tester.model->initSystem();
+
+    // Check current properties/parameters of all springs are equal.
+    for (int i = 0; i < tester.n; i++) {
+        tester.checkParametersAndPropertiesEqual(*tester.sprEC[i]);
+    }
+
+    // Pick a contact instance to manipulate.
+    ExponentialContact& spr = *tester.sprEC[0];
+
+    // Declarations
+    double deltaDbl = 0.1;
+    Vec3 deltaVec3(deltaDbl);
+    double vali{NaN}, valf{NaN};
+    Vec3 veci{NaN}, vecf{NaN};
+
+    // Static Friction Coefficient
+    vali = spr.getMuStatic(state);
+    spr.setMuStatic(state, vali + deltaDbl);
+    valf = spr.getMuStatic(state);
+    CHECK(valf == vali + deltaDbl);
+
+    // Kinetic Friction Coefficient
+    vali = spr.getMuKinetic(state);
+    spr.setMuKinetic(state, vali + deltaDbl);
+    valf = spr.getMuKinetic(state);
+    CHECK(valf == vali + deltaDbl);
+
+    // Sliding
+    // Note that the "sliding" state is an auto-update discrete state and so
+    // it is not settable. It is only retrievable. The "sliding" state is
+    // updated by the ExponentialContact instance during simulation after each
+    // successful integration step.
+    // There are bounds (0 <= sliding <= 1.0) that can be checked, however.
+    // In addition, retrieving the sldiing state also requites the state to be
+    // realized to Stage::Dynamics or higher, so we can check that an
+    // exception is thrown if the state is not realized to that stage and
+    // a "get" is attempted.
+    state.setTime(0.0); // Resets the system to Stage::Time
+    CHECK_THROWS(vali = spr.getSliding(state));
+    tester.model->getMultibodySystem().realize(state, SimTK::Stage::Dynamics);
+    vali = spr.getSliding(state);
+    CHECK(vali >= 0.0);
+    CHECK(vali <= 1.0);
+
+    // Elastic Anchor Point
+    // Like sliding, the "anchor" state is an auto-update discrete state and
+    // so it is not settable in a simple way. See comments for "sliding" above.
+    // The position of an anchar point can, however, be set to correspond
+    // exactly to the position of the body station of its spring.
+    // Note - this is also a good check for 1) resetAnchorPoint(),
+    // 2) getAnchorPointPosition(), and 3) getStationPosition().
+    state.setTime(0.0); // Resets the system to Stage::Time
+    CHECK_THROWS(veci = spr.getAnchorPointPosition(state));
+    spr.resetAnchorPoint(state);
+    tester.model->getMultibodySystem().realize(state, SimTK::Stage::Dynamics);
+    veci = spr.getAnchorPointPosition(state);
+    vecf = spr.getStationPosition(state);
+    CHECK(vecf[0] == veci[0]);
+    // y won't be equal because the anchor point is on the contact plane
+    CHECK(vecf[2] == veci[2]);
 }
 
 //_____________________________________________________________________________
