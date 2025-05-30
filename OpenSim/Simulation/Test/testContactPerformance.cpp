@@ -587,7 +587,7 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
         body.setUToFitAngularVelocity(state, angvel);
         break;
     default:
-        cout << "Unrecognized set of initial conditions!" << endl;
+        cout << "Unrecognized set of initial co  nditions!" << endl;
     }
 }
 

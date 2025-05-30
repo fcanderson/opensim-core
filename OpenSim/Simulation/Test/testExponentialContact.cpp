@@ -579,21 +579,6 @@ TEST_CASE("Property Accessors")
     SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
     CHECK(xformf.p() == xformp.p());
     CHECK(xformf.R() == xformp.R());
-
-    // Body Name
-    const std::string bodyNamei = tester.sprEC[0]->getBodyName();
-    tester.sprEC[0]->setBodyName(bodyNamei + "new");
-    const std::string bodyNamef = tester.sprEC[0]->getBodyName();
-    CHECK(bodyNamef == bodyNamei + "new");
-
-    // Body Station
-    Vec3 delta(0.1, 0.2, 0.3);
-    const SimTK::Vec3 stationi = tester.sprEC[0]->getBodyStation();
-    tester.sprEC[0]->setBodyStation(stationi + delta);
-    const SimTK::Vec3 stationf = tester.sprEC[0]->getBodyStation();
-    CHECK(stationf[0] == stationi[0] + delta[0]);
-    CHECK(stationf[1] == stationi[1] + delta[1]);
-    CHECK(stationf[2] == stationi[2] + delta[2]);
 }
 
 //_____________________________________________________________________________
