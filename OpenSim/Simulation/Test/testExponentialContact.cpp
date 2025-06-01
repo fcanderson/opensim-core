@@ -441,88 +441,6 @@ printDiscreteVariableAbstractValue(const string& pathName,
 }
 
 //_____________________________________________________________________________
-// The only types that are handled are double and Vec3 at this point.
-// The significant changes in how Discrete Variables are handled are:
-//      1. Values are now not assumed to be doubles but are AbstractValues.
-//      2. Discrete variables allocated external to OpenSim are permitted.
-//      3. Discrete variables may be accessed via the Component API by
-//      specifying the path (e.g., path = "/forceset/Exp0/anchor").
-void
-ExponentialContactTester::
-testDiscreteVariables(State& state, const ForceSet& fSet) {
-
-    // Get the names
-    OpenSim::Array<std::string> names = fSet.getDiscreteVariableNames();
-
-    // Loop
-    int n = names.size();
-    for (int i = 0; i < n; ++i) {
-
-        // Print values for debugging purposes.
-        AbstractValue& valAbstract =
-            fSet.updDiscreteVariableAbstractValue(state, names[i]);
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Declarations
-        double tol = 1.0e-6;
-        double deltaDbl = 0.1;
-        Vec3 deltaVec3(deltaDbl);
-        double valStartDbl{NaN};
-        Vec3 valStartVec3{NaN};
-
-        // Perturb
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                SimTK::Value<double>::updDowncast(valAbstract);
-            valStartDbl = valDbl;
-            valDbl = valStartDbl + deltaDbl;
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                SimTK::Value<Vec3>::updDowncast(valAbstract);
-            valStartVec3 = valVec3.get();
-            valVec3 = valStartVec3 + deltaVec3;
-        }
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Check that the value changed correctly
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                SimTK::Value<double>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valDbl.get(), valStartDbl + deltaDbl, tol);
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                SimTK::Value<Vec3>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valVec3.get(), valStartVec3 + deltaVec3, tol);
-        }
-
-        // Restore the starting value
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                SimTK::Value<double>::updDowncast(valAbstract);
-            valDbl = valStartDbl;
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                SimTK::Value<Vec3>::updDowncast(valAbstract);
-            valVec3 = valStartVec3;
-        }
-        //printDiscreteVariableAbstractValue(names[i], valAbstract);
-
-        // Check that the value was correctly restored
-        if (SimTK::Value<double>::isA(valAbstract)) {
-            SimTK::Value<double>& valDbl =
-                SimTK::Value<double>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valDbl.get(), valStartDbl, tol);
-        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
-            SimTK::Value<Vec3>& valVec3 =
-                SimTK::Value<Vec3>::updDowncast(valAbstract);
-            ASSERT_EQUAL(valVec3.get(), valStartVec3, tol);
-        }
-
-    }
-
-}
-
-//_____________________________________________________________________________
 // Test that the model can be serialized and deserialized.
 TEST_CASE("Model Serialization")
 {
@@ -914,3 +832,88 @@ TEST_CASE("Spring Parameters")
     spr.setParameters(pi); // now back to original
     tester.checkParametersAndPropertiesEqual(spr);
 }
+
+
+/* Legacy code that is a good example of low-level discrete state access...
+//_____________________________________________________________________________
+// The only types that are handled are double and Vec3 at this point.
+// The significant changes in how Discrete Variables are handled are:
+//      1. Values are now not assumed to be doubles but are AbstractValues.
+//      2. Discrete variables allocated external to OpenSim are permitted.
+//      3. Discrete variables may be accessed via the Component API by
+//      specifying the path (e.g., path = "/forceset/Exp0/anchor").
+void
+ExponentialContactTester::
+testDiscreteVariables(State& state, const ForceSet& fSet) {
+
+    // Get the names
+    OpenSim::Array<std::string> names = fSet.getDiscreteVariableNames();
+
+    // Loop
+    int n = names.size();
+    for (int i = 0; i < n; ++i) {
+
+        // Print values for debugging purposes.
+        AbstractValue& valAbstract =
+            fSet.updDiscreteVariableAbstractValue(state, names[i]);
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
+
+        // Declarations
+        double tol = 1.0e-6;
+        double deltaDbl = 0.1;
+        Vec3 deltaVec3(deltaDbl);
+        double valStartDbl{NaN};
+        Vec3 valStartVec3{NaN};
+
+        // Perturb
+        if (SimTK::Value<double>::isA(valAbstract)) {
+            SimTK::Value<double>& valDbl =
+                SimTK::Value<double>::updDowncast(valAbstract);
+            valStartDbl = valDbl;
+            valDbl = valStartDbl + deltaDbl;
+        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
+            SimTK::Value<Vec3>& valVec3 =
+                SimTK::Value<Vec3>::updDowncast(valAbstract);
+            valStartVec3 = valVec3.get();
+            valVec3 = valStartVec3 + deltaVec3;
+        }
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
+
+        // Check that the value changed correctly
+        if (SimTK::Value<double>::isA(valAbstract)) {
+            SimTK::Value<double>& valDbl =
+                SimTK::Value<double>::updDowncast(valAbstract);
+            ASSERT_EQUAL(valDbl.get(), valStartDbl + deltaDbl, tol);
+        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
+            SimTK::Value<Vec3>& valVec3 =
+                SimTK::Value<Vec3>::updDowncast(valAbstract);
+            ASSERT_EQUAL(valVec3.get(), valStartVec3 + deltaVec3, tol);
+        }
+
+        // Restore the starting value
+        if (SimTK::Value<double>::isA(valAbstract)) {
+            SimTK::Value<double>& valDbl =
+                SimTK::Value<double>::updDowncast(valAbstract);
+            valDbl = valStartDbl;
+        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
+            SimTK::Value<Vec3>& valVec3 =
+                SimTK::Value<Vec3>::updDowncast(valAbstract);
+            valVec3 = valStartVec3;
+        }
+        //printDiscreteVariableAbstractValue(names[i], valAbstract);
+
+        // Check that the value was correctly restored
+        if (SimTK::Value<double>::isA(valAbstract)) {
+            SimTK::Value<double>& valDbl =
+                SimTK::Value<double>::updDowncast(valAbstract);
+            ASSERT_EQUAL(valDbl.get(), valStartDbl, tol);
+        } else if (SimTK::Value<Vec3>::isA(valAbstract)) {
+            SimTK::Value<Vec3>& valVec3 =
+                SimTK::Value<Vec3>::updDowncast(valAbstract);
+            ASSERT_EQUAL(valVec3.get(), valStartVec3, tol);
+        }
+
+    }
+
+}
+*/
