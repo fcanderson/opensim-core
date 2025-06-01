@@ -336,14 +336,6 @@ simulate()
     ForceSet& fSet = model->updForceSet();
     ExponentialContact::resetAnchorPoints(fSet, state);
 
-    // Check the Component API for discrete states.
-    int n = fSet.getSize();
-    try {
-        testDiscreteVariables(state, fSet);
-    } catch (const std::exception& e) {
-        cout << e.what() << endl;
-    }
-
     // Integrate
     Manager manager(*model);
     manager.getIntegrator().setMaximumStepSize(dt_max);
@@ -551,6 +543,109 @@ testDiscreteVariables(State& state, const ForceSet& fSet) {
     }
 
 }
+
+//_____________________________________________________________________________
+// Test that the model can be serialized and deserialized.
+TEST_CASE("Model Serialization")
+{
+    // Create the tester and build the tester model.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
+
+    // Serialize the model with default properties and spring parameters.
+    std::string fileName = "BouncingBlock_ExponentialContact_Default.osim";
+    CHECK_NOTHROW(tester.model->print(fileName));
+
+    // Deserialize the model
+    Model modelCopy(fileName);
+
+    // Check that the properties and spring parameters match the original.
+    const ForceSet& fSet0 = tester.model->getForceSet();
+    const ForceSet& fSet1 = modelCopy.getForceSet();
+    int n = fSet1.getSize();
+    for (int i = 0; i < n; ++i) {
+        try {
+            ExponentialContact& ec0 =
+                dynamic_cast<ExponentialContact&>(fSet0.get(i));
+            ExponentialContact& ec1 =
+                dynamic_cast<ExponentialContact&>(fSet1.get(i));
+
+            CHECK(ec1.getContactPlaneTransform() ==
+                    ec0.getContactPlaneTransform());
+
+            CHECK(ec1.getBodyName() == ec0.getBodyName());
+            CHECK(ec1.getBodyStation() == ec0.getBodyStation());
+
+            ExponentialSpringParameters p = ec1.getParameters();
+            CHECK(ec1.getParameters() == ec0.getParameters());
+
+        } catch (const std::bad_cast&) {
+            // Nothing should happen here. Execution is just skipping any
+            // OpenSim::Force that is not an ExponentialContact.
+        }
+    }
+
+    // Alter the default spring parameters to test reserialization.
+    double delta = 0.123;
+    Vec3 shape;
+    ExponentialSpringParameters p = tester.sprEC[0]->getParameters();
+    p.getShapeParameters(shape[0], shape[1], shape[2]);
+    p.setShapeParameters(
+        shape[0] + delta, shape[1] + delta, shape[2] + delta);
+    p.setNormalViscosity(p.getNormalViscosity() + delta);
+    p.setMaxNormalForce(p.getMaxNormalForce() + delta);
+    p.setFrictionElasticity(p.getFrictionElasticity() + delta);
+    p.setFrictionViscosity(p.getFrictionViscosity() + delta);
+    p.setSettleVelocity(p.getSettleVelocity() + delta);
+    p.setInitialMuStatic(p.getInitialMuStatic() + delta);
+    p.setInitialMuKinetic(p.getInitialMuKinetic() + delta);
+    n = fSet0.getSize();
+    for (int i = 0; i < n; ++i) {
+        try {
+            ExponentialContact& ec =
+                dynamic_cast<ExponentialContact&>(fSet0.get(i));
+            ec.setParameters(p);
+
+        } catch (const std::bad_cast&) {
+            // Nothing should happen here. Execution is just skipping any
+            // OpenSim::Force that is not an ExponentialContact.
+        }
+    }
+
+    // Serialize the model with altered properties and spring parameters.
+    fileName = "BouncingBlock_ExponentialContact_Altered.osim";
+    CHECK_NOTHROW(tester.model->print(fileName));
+
+    // Deserialize the model
+    Model modelCopy2(fileName);
+
+    // Check that the re-deserialized model has the correct spring parameters.
+    const ForceSet& fSet2 = modelCopy2.getForceSet();
+    n = fSet2.getSize();
+    for (int i = 0; i < n; ++i) {
+        try {
+            ExponentialContact& ec0 =
+                dynamic_cast<ExponentialContact&>(fSet0.get(i));
+            ExponentialContact& ec2 =
+                dynamic_cast<ExponentialContact&>(fSet2.get(i));
+
+            CHECK(ec2.getContactPlaneTransform() ==
+                ec0.getContactPlaneTransform());
+
+            CHECK(ec2.getBodyName() == ec0.getBodyName());
+            CHECK(ec2.getBodyStation() == ec0.getBodyStation());
+
+            ExponentialSpringParameters p2 = ec2.getParameters();
+            CHECK(ec2.getParameters() == ec0.getParameters());
+
+        } catch (const std::bad_cast&) {
+            // Nothing should happen here. Execution is just skipping any
+            // OpenSim::Force that is not an ExponentialContact.
+        }
+    }
+
+}
+
 
 //_____________________________________________________________________________
 // Test that the properties of an ExponentialContact instance can be set
