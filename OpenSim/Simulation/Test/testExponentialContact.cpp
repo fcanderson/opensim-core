@@ -420,28 +420,6 @@ checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
     valB = b.getInitialMuKinetic();
     CHECK(valA == valB);
 }
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
-testModelSerialization() {
-    // Serialize the current model
-    std::string fileName = "BouncingBlock_ExponentialContact_Serialized.osim";
-    model->print(fileName);
-    ExponentialSpringParameters p = sprEC[0]->getParameters();
-
-    // Deserialize the model
-    Model modelCopy(fileName);
-
-    // Get the 0th contact instance
-    ExponentialContact* spr = sprEC[0];
-    ExponentialContact* sprCopy = dynamic_cast<ExponentialContact*>(
-        &modelCopy.updForceSet().get(spr->getName()));
-    ExponentialSpringParameters pCopy = sprCopy->getParameters();
-
-    // Parameters should be equal
-    SimTK_ASSERT_ALWAYS(pCopy == p,
-        "Deserialized parameters are not equal to original parameters.");
-}
 
 //_____________________________________________________________________________
 void
