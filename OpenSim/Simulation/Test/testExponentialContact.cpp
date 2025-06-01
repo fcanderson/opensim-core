@@ -646,7 +646,6 @@ TEST_CASE("Model Serialization")
 
 }
 
-
 //_____________________________________________________________________________
 // Test that the properties of an ExponentialContact instance can be set
 // and retrieved properly. These properties are members ExponentialContact.
@@ -836,6 +835,26 @@ TEST_CASE("Spring Parameters")
     pf.setNormalViscosity(vali + delta);
     tester.checkParametersAndPropertiesEqual(spr);
     valf = pf.getNormalViscosity();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Max Normal Force
+    vali = pi.getMaxNormalForce();
+    pf.setMaxNormalForce(vali + delta);
+    valf = pf.getMaxNormalForce();
+    CHECK(valf == vali + delta);
+    spr.setParameters(pf);
+    tester.checkParametersAndPropertiesEqual(spr);
+    spr.setParameters(pi); // now back to original
+    tester.checkParametersAndPropertiesEqual(spr);
+
+    // Settle Velocity
+    vali = pi.getSettleVelocity();
+    pf.setSettleVelocity(vali + delta);
+    valf = pf.getSettleVelocity();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     tester.checkParametersAndPropertiesEqual(spr);
