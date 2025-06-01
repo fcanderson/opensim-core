@@ -154,6 +154,9 @@ public:
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
     OpenSim::ExponentialContact* sprEC[n]{nullptr};
+    // Expected simulation results for running test cases
+    static const int expectedTrys{1796};
+    static const int expectedSteps{1237};
 
     // Reporters
     StatesTrajectoryReporter* statesReporter{nullptr};
@@ -314,72 +317,6 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
         cout << "Unrecognized set of initial conditions!" << endl;
     }
 }
-
-
-//_____________________________________________________________________________
-void
-ExponentialContactTester::
-simulate()
-{
-    // Initialize the state
-    // Note that model components have already been connected and the
-    // SimTK::System has already been built.
-    // See TestExponentialContact::buildModel().
-    SimTK::State& state = model->initializeState();
-
-    // Set initial conditions
-    double dz = 1.0;
-    if (blockEC != NULL)
-        setInitialConditions(state, blockEC->getMobilizedBody(), dz);
-
-    // Reset the elastic anchor point for each ExponentialContact instance
-    ForceSet& fSet = model->updForceSet();
-    ExponentialContact::resetAnchorPoints(fSet, state);
-
-    // Integrate
-    Manager manager(*model);
-    manager.getIntegrator().setMaximumStepSize(dt_max);
-    manager.setIntegratorAccuracy(integ_accuracy);
-    state.setTime(0.0);
-    manager.initialize(state);
-    manager.setWriteToStorage(true);
-    std::clock_t startTime = std::clock();
-    state = manager.integrate(tf);
-    auto runTime = 1.e3 * (std::clock() - startTime) / CLOCKS_PER_SEC;
-
-    // Output
-    int trys = manager.getIntegrator().getNumStepsAttempted();
-    int steps = manager.getIntegrator().getNumStepsTaken();
-    //printConditions();
-    cout << "           trys:  " << trys << endl;
-    cout << "          steps:  " << steps << endl;
-    cout << "       cpu time:  " << runTime << " msec" << endl;
-
-    // Save the model to file
-    //model->print("C:\\Users\\fcand\\Documents\\block.osim");
-
-    // Serialize the states
-    int precision = 10;
-    const StatesTrajectory& statesTraj = statesReporter->getStates();
-    StatesDocument statesDocSe =
-        statesTraj.exportToStatesDocument(*model);
-    SimTK::String filename01 =
-        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test01.ostates";
-    statesDocSe.serialize(filename01);
-
-    // Deserialize the states
-    StatesDocument statesDocDe(filename01);
-    Array_<State> traj;
-    statesDocDe.deserialize(*model, traj);
-
-    // Reserialize the states
-    String note = "Should be identical to test01.ostates.";
-    SimTK::String filename02 =
-        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test02.ostates";
-    StatesDocument statesDocRe(*model, traj, note, precision);
-    statesDocRe.serialize(filename02);
-}
-
 //_____________________________________________________________________________
 void
 ExponentialContactTester::
@@ -398,6 +335,10 @@ checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
     double valA, valB;
     valA = a.get_normal_viscosity();
     valB = b.getNormalViscosity();
+    CHECK(valA == valB);
+
+    valA = a.get_max_normal_force();
+    valB = b.getMaxNormalForce();
     CHECK(valA == valB);
 
     valA = a.get_friction_elasticity();
@@ -438,6 +379,66 @@ printDiscreteVariableAbstractValue(const string& pathName,
         Vec3 x = SimTK::Value<Vec3>::downcast(value);
         cout << x << endl;
     }
+}
+
+//_____________________________________________________________________________
+// Test that the model can be serialized and deserialized.
+TEST_CASE("Simulaltion")
+{
+    // Create the tester, build the tester model, and initialize the state.
+    ExponentialContactTester tester;
+    CHECK_NOTHROW(tester.buildModel());
+    SimTK::State& state = tester.model->initializeState();
+
+    // Set initial conditions
+    double dz = 1.0;
+    tester.whichInit = ExponentialContactTester::SpinSlide;
+    tester.setInitialConditions(state, tester.blockEC->getMobilizedBody(), dz);
+
+    // Reset the elastic anchor point for each ExponentialContact instance
+    ForceSet& fSet = tester.model->updForceSet();
+    ExponentialContact::resetAnchorPoints(fSet, state);
+
+    // Integrate
+    Manager manager(*tester.model);
+    manager.getIntegrator().setMaximumStepSize(tester.dt_max);
+    manager.setIntegratorAccuracy(tester.integ_accuracy);
+    state.setTime(0.0);
+    manager.initialize(state);
+    manager.setWriteToStorage(true);
+    std::clock_t startTime = std::clock();
+    state = manager.integrate(tester.tf);
+    auto runTime = 1.e3 * (std::clock() - startTime) / CLOCKS_PER_SEC;
+
+    // Output
+    int trys = manager.getIntegrator().getNumStepsAttempted();
+    int steps = manager.getIntegrator().getNumStepsTaken();
+    //printConditions();
+    cout << "           trys:  " << trys << endl;
+    cout << "          steps:  " << steps << endl;
+    cout << "       cpu time:  " << runTime << " msec" << endl;
+
+    // Check that the number of trys and steps match the expected values.
+    CHECK(trys == ExponentialContactTester::expectedTrys);
+    CHECK(steps == ExponentialContactTester::expectedSteps);
+
+    // Serialize the states
+    int precision = 10;
+    const StatesTrajectory& statesTraj = tester.statesReporter->getStates();
+    StatesDocument statesDocSe = statesTraj.exportToStatesDocument(
+        *tester.model, "sliding simulation", precision);
+    SimTK::String filename01 = "BouncingBlock_ExponentialContact_1.ostates";
+    CHECK_NOTHROW(
+        statesDocSe.serialize(filename01));
+
+    // Deserialize the states
+    StatesDocument statesDocDe(filename01);
+    Array_<State> statesTrajDeserialized;
+    CHECK_NOTHROW(
+        statesDocDe.deserialize(*tester.model, statesTrajDeserialized));
+
+    // Check that the number of State objects in the trajectories matches
+    CHECK(statesTraj.getSize() == statesTrajDeserialized.size());
 }
 
 //_____________________________________________________________________________
