@@ -480,8 +480,11 @@ TEST_CASE("Model Serialization")
             CHECK(ec1.getContactPlaneTransform() ==
                     ec0.getContactPlaneTransform());
 
-            CHECK(ec1.getBodyName() == ec0.getBodyName());
-            CHECK(ec1.getBodyStation() == ec0.getBodyStation());
+            const Station& s0 = ec0.getConnectee<Station>("station");
+            const Station& s1 = ec1.getConnectee<Station>("station");
+            CHECK(s0.getParentFrame().getAbsolutePathString() ==
+                  s1.getParentFrame().getAbsolutePathString());
+            CHECK(s0.get_location() == s1.get_location());
 
             ExponentialSpringParameters p = ec1.getParameters();
             CHECK(ec1.getParameters() == ec0.getParameters());
@@ -539,8 +542,11 @@ TEST_CASE("Model Serialization")
             CHECK(ec2.getContactPlaneTransform() ==
                 ec0.getContactPlaneTransform());
 
-            CHECK(ec2.getBodyName() == ec0.getBodyName());
-            CHECK(ec2.getBodyStation() == ec0.getBodyStation());
+            const Station& s0 = ec0.getConnectee<Station>("station");
+            const Station& s2 = ec2.getConnectee<Station>("station");
+            CHECK(s0.getParentFrame().getAbsolutePathString() ==
+                  s2.getParentFrame().getAbsolutePathString());
+            CHECK(s0.get_location() == s2.get_location());
 
             ExponentialSpringParameters p2 = ec2.getParameters();
             CHECK(ec2.getParameters() == ec0.getParameters());
@@ -629,14 +635,13 @@ TEST_CASE("Discrete State Accessors")
 
 
 //_____________________________________________________________________________
-// Test that the properties of an ExponentialContact instance can be
-// set and retrieved properly. These properties, along with the properties
+// Test that the contact plane property of an ExponentialContact instance can be
+// set and retrieved properly. This property, along with the properties
 // encapsulated in the ExponentialContact::Parameters class (see below), are
-// the variables needed to construct an ExponentialContact instance. These
-// properties include the contact plane transform, body name, and body station,
-// along with the ExponentialContact::Parameters, which are tested
-// below in the test case "Spring Parameters".
-TEST_CASE("Property Accessors")
+// is needed to construct an ExponentialContact instance. The 
+// ExponentialContact::Parameters are tested below in the test case 
+// "Spring Parameters".
+TEST_CASE("Contact Plane Transform")
 {
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
@@ -653,21 +658,6 @@ TEST_CASE("Property Accessors")
     SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
     CHECK(xformf.p() == xformp.p());
     CHECK(xformf.R() == xformp.R());
-
-    // Body Name
-    const std::string bodyNamei = tester.sprEC[0]->getBodyName();
-    tester.sprEC[0]->setBodyName(bodyNamei + "new");
-    const std::string bodyNamef = tester.sprEC[0]->getBodyName();
-    CHECK(bodyNamef == bodyNamei + "new");
-
-    // Body Station
-    Vec3 delta(0.1, 0.2, 0.3);
-    const SimTK::Vec3 stationi = tester.sprEC[0]->getBodyStation();
-    tester.sprEC[0]->setBodyStation(stationi + delta);
-    const SimTK::Vec3 stationf = tester.sprEC[0]->getBodyStation();
-    CHECK(stationf[0] == stationi[0] + delta[0]);
-    CHECK(stationf[1] == stationi[1] + delta[1]);
-    CHECK(stationf[2] == stationi[2] + delta[2]);
 }
 
 //_____________________________________________________________________________
