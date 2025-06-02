@@ -356,7 +356,7 @@ public:
     void setParameters(const SimTK::ExponentialSpringParameters& params);
     /** Get the customizable Topology-stage spring parameters. Use the copy
     constructor or the assignment operator on the returned reference to create
-    an parameters object that can be modified. */
+    a parameters object that can be modified. */
     const SimTK::ExponentialSpringParameters& getParameters() const;
 
     //-------------------------------------------------------------------------
@@ -613,8 +613,8 @@ exponential spring force.
 This class does 3 things:
 
 - Implements an OpenSim Property for each of the customizable contact
-parameters of class OpenSim::ExponentialContact, enabling those parameters
-to be serialized and de-serialized to and from an OpenSim Model file.
+parameters, enabling those parameters to be serialized and de-serialized to
+and from an OpenSim Model file.
 
 - Provides a member variable (_stkparams) for storing user-set parameters
 prior to the existance of the underlying SimTK::ExponentialSpringForce object.
@@ -633,8 +633,8 @@ To change the values of individual parameters programmatically:
     SimTK::ExponentialSpringParameters p = exp_contact.getParameters();
 
     // Make the desired changes to the copy using the appropropriate setters
-    p.setFrictionElasticity(kp);
-    p.setFrictionViscosity(kv);
+    p.setFrictionElasticity(kpNew);
+    p.setFrictionViscosity(kvNew);
     ...
 
     // Call ExponentialContact::setParameters() to push the new parameters
