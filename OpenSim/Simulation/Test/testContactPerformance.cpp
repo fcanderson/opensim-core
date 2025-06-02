@@ -130,14 +130,6 @@ public:
             double t, const SimTK::Vec3& point, const SimTK::Vec3& force);
     void setForceDataHeader();
 
-    // Test stuff not covered elsewhere.
-    //void test();
-    //void testParameters();
-    //void testModelSerialization();
-    //void printDiscreteVariableAbstractValue(const string& pathName,
-    //    const AbstractValue& value) const;
-    //void testDiscreteVariables(State& state, const ForceSet& fSet);
-
     // Simulation
     void setInitialConditions(SimTK::State& state,
         const SimTK::MobilizedBody& body, double dz);
@@ -310,7 +302,6 @@ printConditions() {
     cout << "             tf:  " << tf << " sec" << endl;
 }
 //_____________________________________________________________________________
-// Build the model
 void
 ContactPerformanceTester::
 buildModel()
@@ -515,7 +506,8 @@ addHuntCrossleyContact(OpenSim::Body* block)
 }
 //_____________________________________________________________________________
 // dz allows for the body to be shifted along the z axis. This is useful for
-// displacing the Exp and Hunt models.
+// displacing the Exp and Hunt models upward or downward so that the initial
+// normal contact force is reasonable.
 void
 ContactPerformanceTester::
 setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
@@ -588,7 +580,6 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
     }
 }
 
-
 //_____________________________________________________________________________
 void
 ContactPerformanceTester::
@@ -629,30 +620,6 @@ simulate()
     cout << "           trys:  " << trys << endl;
     cout << "          steps:  " << steps << endl;
     cout << "       cpu time:  " << runTime << " msec" << endl;
-
-    // Save the model to file
-    //model->print("C:\\Users\\fcand\\Documents\\block.osim");
-
-    // Serialize the states
-    int precision = 10;
-    const StatesTrajectory& statesTraj = statesReporter->getStates();
-    StatesDocument statesDocSe =
-        statesTraj.exportToStatesDocument(*model);
-    SimTK::String filename01 =
-        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test01.ostates";
-    statesDocSe.serialize(filename01);
-
-    // Deserialize the states
-    StatesDocument statesDocDe(filename01);
-    Array_<State> traj;
-    statesDocDe.deserialize(*model, traj);
-
-    // Reserialize the states
-    String note = "Should be identical to test01.ostates.";
-    SimTK::String filename02 =
-        "C:/Users/fcand/Documents/GitHub/Work/Testing/OpenSim/test02.ostates";
-    StatesDocument statesDocRe(*model, traj, note, precision);
-    statesDocRe.serialize(filename02);
 }
 
 
@@ -677,8 +644,7 @@ For an assessment of computational performance, just one block should be
 simulated at a time. Number of integration trys and steps, as well as cpu
 time, are reported.
 
-Choice of initial conditions can be made in order to simulate the following
-motions:
+Choice of initial conditions can be made in to simulate the following motions:
     1) Static (y = 0.1 m, sitting at rest on the floor)
     2) Bouncing (y = 1.0 m, dropped)
     3) Sliding (y = 0.2 m, vx = -4.0 m/s)
@@ -690,7 +656,7 @@ motions:
 Additional options allow the following to be specified:
     NoDamp   Parameters are chosen to eliminate all energy dissipation.
     Fx       A ramping horizontal force (Fx) is applied.
-    Vis      Open a visualization window.
+    Vis      Opens a visualization window.
 
 If no external force is applied, tf = 5.0 s.
 
@@ -700,19 +666,7 @@ fx = |mass*g| at t = 30.0 s. The force is not ramped up prior to t = 25.0 s
 in order to allow the block an opportunity to come fully to rest.
 This ramping profile was done with the "Static" initial condition choice
 in mind so that friction models could be evaluated more critically.
-In particular, a static block should not start sliding until fx > μₛ Fₙ.
-
-For ExponentialContact, the following things are tested:
-    a) instantiation
-    b) model initialization
-    c) consistency between OpenSim Properties and SimTK parameters
-    d) data cache access
-    e) realization stage invalidation
-    f) reporting
-    g) serialization
-
-The HuntCrossleyForce class is tested elsewhere (e.g., see
-testContactGeometry.cpp and testForce.cpp). */
+In particular, a static block should not start sliding until fx > μₛ Fₙ. */
 int main(int argc, char** argv) {
 
     // Register object types
@@ -773,7 +727,7 @@ int main(int argc, char** argv) {
 // Dump all memory leaks since execution began:
     _CrtDumpMemoryLeaks();
 
-// To isolate leaks that occur in soecific block of code, create a check point
+// To isolate leaks that occur in specific block of code, create a check point
 // and filter out all leaks that occured before the check point:
     _CrtMemState memoryState = {0}; _CrtMemCheckpoint(&memoryState);
     ... the block of code to be tested ...
