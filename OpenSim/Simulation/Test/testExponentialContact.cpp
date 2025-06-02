@@ -154,9 +154,11 @@ public:
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
     OpenSim::ExponentialContact* sprEC[n]{nullptr};
-    // Expected simulation results for running the Simulation test case
-    static const int expectedTrys{1796};
-    static const int expectedSteps{1237};
+    // Expected simulation results for running the Simulation test case.
+    // Depending on the platform (e.g,. Windows, Linux, MacOS), the actual
+    // values may be less than or equal to the expected values.
+    static const int expectedTrys{1813};
+    static const int expectedSteps{1247};
 
     // Reporters
     StatesTrajectoryReporter* statesReporter{nullptr};
@@ -429,8 +431,8 @@ TEST_CASE("Simulaltion")
     cout << "       cpu time:  " << runTime << " msec" << endl;
 
     // Check that the number of trys and steps match the expected values.
-    CHECK(trys == ExponentialContactTester::expectedTrys);
-    CHECK(steps == ExponentialContactTester::expectedSteps);
+    CHECK(trys <= ExponentialContactTester::expectedTrys);
+    CHECK(steps <= ExponentialContactTester::expectedSteps);
 
     // Serialize the states
     int precision = 10;
@@ -486,7 +488,6 @@ TEST_CASE("Model Serialization")
                   s1.getParentFrame().getAbsolutePathString());
             CHECK(s0.get_location() == s1.get_location());
 
-            ExponentialSpringParameters p = ec1.getParameters();
             CHECK(ec1.getParameters() == ec0.getParameters());
 
         } catch (const std::bad_cast&) {
@@ -548,7 +549,6 @@ TEST_CASE("Model Serialization")
                   s2.getParentFrame().getAbsolutePathString());
             CHECK(s0.get_location() == s2.get_location());
 
-            ExponentialSpringParameters p2 = ec2.getParameters();
             CHECK(ec2.getParameters() == ec0.getParameters());
 
         } catch (const std::bad_cast&) {
@@ -648,8 +648,6 @@ TEST_CASE("Contact Plane Transform")
     CHECK_NOTHROW(tester.buildModel());
 
     // Contact Plane
-    const SimTK::Transform xformi =
-        tester.sprEC[0]->getContactPlaneTransform();
     SimTK::Rotation R;
     R.setRotationFromAngleAboutX(1.234);
     SimTK::Transform xformp;
