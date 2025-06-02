@@ -62,9 +62,9 @@ using std::vector;
 
 //=============================================================================
 /** Class ExponentialContactTester provides a scope and framework for
-evaluating and testing the ExponentialContact class. Using a testing class, as
-opposed to just a main() and C-style procedures, gets a lot of variables out
-of the global scope and allows for more structured memory management. */
+evaluating and testing the ExponentialContact class. Using this testing class,
+gets a lot of variables out of the global scope and allows for more structured
+memory management. */
 class ExponentialContactTester
 {
 public:
@@ -154,7 +154,7 @@ public:
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
     OpenSim::ExponentialContact* sprEC[n]{nullptr};
-    // Expected simulation results for running test cases
+    // Expected simulation results for running the Simulation test case
     static const int expectedTrys{1796};
     static const int expectedSteps{1237};
 
@@ -162,8 +162,6 @@ public:
     StatesTrajectoryReporter* statesReporter{nullptr};
 
 }; // End class ExponentialContactTester declarations
-
-
 
 //_____________________________________________________________________________
 // Build the model
@@ -245,7 +243,7 @@ addExponentialContact(OpenSim::Body* block)
 }
 //_____________________________________________________________________________
 // dz allows for the body to be shifted along the z axis. This is useful for
-// displacing the Exp and Hunt models.
+// displacing the body spring points upward above the floor.
 void
 ExponentialContactTester::
 setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
@@ -361,7 +359,6 @@ checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
     valB = b.getInitialMuKinetic();
     CHECK(valA == valB);
 }
-
 //_____________________________________________________________________________
 void
 ExponentialContactTester::
@@ -381,8 +378,13 @@ printDiscreteVariableAbstractValue(const string& pathName,
     }
 }
 
+
+//=============================================================================
+// Test cases below here.
+//=============================================================================
 //_____________________________________________________________________________
-// Test that the model can be serialized and deserialized.
+// Execute a simulation of a bouncing block with exponential contact,
+// recording states along the way and serializing the states upon completion.
 TEST_CASE("Simulaltion")
 {
     // Create the tester, build the tester model, and initialize the state.
@@ -396,6 +398,10 @@ TEST_CASE("Simulaltion")
     tester.setInitialConditions(state, tester.blockEC->getMobilizedBody(), dz);
 
     // Reset the elastic anchor point for each ExponentialContact instance
+    // Resetting the anchor points moves the anchor point directly below the
+    // body station of the block, which is where the spring force will be
+    // applied. So, initially, there will be no elastic friction force
+    // acting on the block.
     ForceSet& fSet = tester.model->updForceSet();
     ExponentialContact::resetAnchorPoints(fSet, state);
 
@@ -482,7 +488,7 @@ TEST_CASE("Model Serialization")
         }
     }
 
-    // Alter the default spring parameters to test reserialization.
+    // Alter the default spring parameters to test re-serialization.
     double delta = 0.123;
     Vec3 shape;
     ExponentialSpringParameters p = tester.sprEC[0]->getParameters();
@@ -612,17 +618,20 @@ TEST_CASE("Discrete State Accessors")
     veci = spr.getAnchorPointPosition(state);
     vecf = spr.getStationPosition(state);
     CHECK(vecf[0] == veci[0]);
-    // y won't be equal because the anchor point is on the contact plane
+    // vecf[1] won't be equal because the anchor point is always on the contact
+    // plane while the body station is usually located above the contact plane.
     CHECK(vecf[2] == veci[2]);
 }
 
 
 //_____________________________________________________________________________
-// Test that the properties of an ExponentialContact instance can be set
-// and retrieved properly. These properties are members ExponentialContact.
-// The spring parameters are encapsulated in class
-// ExponentialContact::Parameters. The API for those parameters are tested
-// in the test case "Spring Parameters" below.
+// Test that the properties of an ExponentialContact instance can be
+// set and retrieved properly. These properties, along with the properties
+// encapsulated in the ExponentialContact::Parameters class (see below), are
+// the variables needed to construct an ExponentialContact instance. These
+// properties include the contact plane transform, body name, and body station,
+// along with the ExponentialContact::Parameters, which are tested
+// below in the test case "Spring Parameters".
 TEST_CASE("Property Accessors")
 {
     // Create the tester and build the tester model.
