@@ -460,8 +460,11 @@ addExponentialContact(OpenSim::Body* block)
     std::string name = "";
     for (int i = 0; i < n; ++i) {
         name = "Exp" + std::to_string(i);
+        Station* station = new Station(*block, corner[i]);
+        station->setName(fmt::format("corner_{}", i));
+        block->addComponent(station);
         sprEC[i] = new OpenSim::ExponentialContactForce(floorXForm,
-            block->getName(), corner[i], params);
+            *station, params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
     }
@@ -579,7 +582,7 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
         body.setUToFitAngularVelocity(state, angvel);
         break;
     default:
-        cout << "Unrecognized set of initial conditions!" << endl;
+        cout << "Unrecognized set of initial co  nditions!" << endl;
     }
 }
 
@@ -602,8 +605,7 @@ simulate()
         setInitialConditions(state, blockHC->getMobilizedBody(), -dz);
 
     // Reset the elastic anchor point for each ExponentialContactForce instance
-    ForceSet& fSet = model->updForceSet();
-    ExponentialContactForce::resetAnchorPoints(fSet, state);
+    ExponentialContactForce::resetAnchorPoints(*model, state);
 
     // Integrate
     Manager manager(*model);
@@ -704,7 +706,8 @@ int main(int argc, char** argv) {
 
 /**----------------------------------------------------------------------------
 * Useful memory leak detection stuff for Windows:
-*
+*/
+
 /*
 #ifdef _DEBUG
 #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
@@ -755,6 +758,7 @@ void testForXMLMemoryLeaks() {
     model.print(outFile);
 }
 
+*/
 
 /* Part of main ...
 
