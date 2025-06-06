@@ -24,10 +24,8 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 // INCLUDE
-#include "SimTKsimbody.h"
 #include "Force.h"
-#include "OpenSim/Common/Set.h"
-#include "OpenSim/Simulation/Model/ForceSet.h"
+#include "OpenSim/Simulation/Model/Model.h"
 
 namespace OpenSim {
 
@@ -267,21 +265,6 @@ public:
     class Parameters;
 
     //-------------------------------------------------------------------------
-    // PROPERTIES
-    //-------------------------------------------------------------------------
-    OpenSim_DECLARE_PROPERTY(contact_plane_transform, SimTK::Transform,
-        "Orientation and location of the contact plane wrt Ground. The positive z-axis of the contact plane defines the normal.");
-    OpenSim_DECLARE_PROPERTY(contact_parameters, 
-        ExponentialContactForce::Parameters,
-        "Customizable topology-stage parameters.");
-
-    //-------------------------------------------------------------------------
-    // SOCKETS
-    //-------------------------------------------------------------------------
-    OpenSim_DECLARE_SOCKET(station, Station,
-        "The station at which the contact force is applied.");
-
-    //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
     /** Default constructor. */
@@ -305,7 +288,7 @@ public:
 
     /** Destructor. */
     ~ExponentialContactForce() {
-        if (_spr != NULL) delete _spr;
+        if (_spr != nullptr) delete _spr;
     }
 
     //-------------------------------------------------------------------------
@@ -321,28 +304,17 @@ public:
     void resetAnchorPoint(SimTK::State& state) const;
 
     /** Reset the elastic anchor points (friction spring zeros) of all
-    ExponentialContactForce instances in an OpenSim::ForceSet. This step is
+    ExponentialContactForce instances in an OpenSim::Model. This step is
     often needed at the beginning of a simulation to ensure that a simulation
     does not begin with large friction forces. Calling this method will
     invalidate the System at Stage::Dynamics.
-    @param fSet Force set.
+    @param model the Model.
     @param state State object on which to base the reset. */
-    static void resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state);
+    static void resetAnchorPoints(OpenSim::Model& model, SimTK::State& state);
 
     //-------------------------------------------------------------------------
     // Accessors for properties
     //-------------------------------------------------------------------------
-    /** Set the transform that specifies the location and orientation of the
-    contact plane in the Ground frame.
-    Note that the value of the altered property is not pushed to the underlying
-    SimTK::ExponentialSpringForce instance and so wil not have an affect on a
-    simulation or analysis. To have an effect, a new ExponentialContactForce
-    instance must be constructed with the desired value of the poperty.
-    The only reason to call this method is so that a Model can be serialized
-    with the new desired property value. */
-    void setContactPlaneTransform(const SimTK::Transform& X_GP) {
-        set_contact_plane_transform(X_GP);
-    }
     /** Get the transform that specifies the location and orientation of the
     contact plane in the Ground frame. */
     const SimTK::Transform& getContactPlaneTransform() const {
@@ -350,9 +322,7 @@ public:
     }
 
     /** Set the customizable Topology-stage spring parameters.
-    Unlike the preceding set methods for the other properties, the parameters
-    WILL be pushed to the underlying SimTK::ExponentialSpringForce instance.
-    However, calling this method will invalidate the SimTK::System at
+    Calling this method will invalidate the SimTK::System at
     Stage::Toplogy and, thus, require the SimTK::System to be re-realized
     before simulation or analysis can be resumed. */
     void setParameters(const SimTK::ExponentialSpringParameters& params);
@@ -597,9 +567,24 @@ protected:
         int versionNumber) override;
 
 private:
+    //-------------------------------------------------------------------------
+    // PROPERTIES
+    //-------------------------------------------------------------------------
+    OpenSim_DECLARE_PROPERTY(contact_plane_transform, SimTK::Transform,
+        "Orientation and location of the contact plane wrt Ground. The positive z-axis of the contact plane defines the normal.");
+    OpenSim_DECLARE_PROPERTY(contact_parameters, 
+        ExponentialContactForce::Parameters,
+        "Customizable topology-stage parameters.");
+
+    //-------------------------------------------------------------------------
+    // SOCKETS
+    //-------------------------------------------------------------------------
+    OpenSim_DECLARE_SOCKET(station, Station,
+        "The station at which the contact force is applied.");
+
     void setNull();
     void constructProperties();
-    SimTK::ExponentialSpringForce* _spr{NULL};
+    SimTK::ExponentialSpringForce* _spr{nullptr};
 
 }; // END of class ExponentialContactForce
 

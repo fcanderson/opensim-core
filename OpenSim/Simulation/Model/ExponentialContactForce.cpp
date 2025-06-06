@@ -144,7 +144,7 @@ ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
 {
     setNull();
     constructProperties();
-    setContactPlaneTransform(contactPlaneXform);
+    set_contact_plane_transform(contactPlaneXform);
     connectSocket_station(station);
     setParameters(params);
 }
@@ -153,7 +153,7 @@ void
 ExponentialContactForce::
 setNull() {
     setAuthors("F. C. Anderson");
-    _spr = NULL;
+    _spr = nullptr;
 }
 
 void
@@ -206,7 +206,7 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
 
     // Get the subsystem index so we can access the SimTK::Force later.
     ExponentialContactForce* mutableThis =
-        const_cast<ExponentialContactForce *>(this);
+        const_cast<ExponentialContactForce*>(this);
     mutableThis->_spr = spr;
     mutableThis->_index = spr->getForceIndex();
 
@@ -290,25 +290,11 @@ resetAnchorPoint(SimTK::State& state) const {
     _spr->resetAnchorPoint(state);
 }
 
-// There might be a more computationally efficient way to do reset the anchor
-// points of all ExponentialContactForce instances in a ForceSet. Right now,
-// this method loops through all instances in the force set and does a dynamic
-// cast. The computational cost shouldn't be an issue because this method is
-// usually only called once at the beginning of a simulation.
 void
 ExponentialContactForce::
-resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
-    int i;
-    int n = fSet.getSize();
-    for (i = 0; i < n; ++i) {
-        try {
-            ExponentialContactForce& ec =
-                    dynamic_cast<ExponentialContactForce&>(fSet.get(i));
-            ec.resetAnchorPoint(state);
-        } catch (const std::bad_cast&) {
-            // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContactForce.
-        }
+resetAnchorPoints(OpenSim::Model& model, SimTK::State& state) {
+    for (auto& ec : model.updComponentList<ExponentialContactForce>()) {
+        ec.resetAnchorPoint(state);
     }
 }
 
@@ -322,7 +308,7 @@ setParameters(const SimTK::ExponentialSpringParameters& params) {
     p.setSimTKParameters(params);
     // Push the new parameters to the SimTK::ExponentialSpringForce instance.
     // The following call will invalidate the System at Stage::Topology.
-    if (_spr != NULL) _spr->setParameters(params);
+    if (_spr != nullptr) _spr->setParameters(params);
 }
 
 const SimTK::ExponentialSpringParameters&

@@ -152,13 +152,13 @@ public:
     InitialConditionsChoice whichInit{Slide};
     bool noDamp{false};
     // Model and parts
-    Model* model{NULL};
-    OpenSim::Body* blockEC{NULL};
+    Model* model{nullptr};
+    OpenSim::Body* blockEC{nullptr};
     OpenSim::ExponentialContactForce* sprEC[n]{nullptr};
     // Expected simulation results for running the Simulation test case.
     // Depending on the platform (e.g,. Windows, Linux, MacOS), the actual
     // values may be less than or equal to the expected values.
-    static const int expectedTrys{1813};
+    static const int expectedTrys{1817};
     static const int expectedSteps{1247};
 
     // Reporters
@@ -244,7 +244,7 @@ addExponentialContact(OpenSim::Body* block)
         Station* station = new Station(*block, corner[i]);
         station->setName(fmt::format("corner_{}", i));
         block->addComponent(station);
-        sprEC[i] = new OpenSim::ExponentialContact(floorXForm,
+        sprEC[i] = new OpenSim::ExponentialContactForce(floorXForm,
             *station, params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
@@ -330,7 +330,7 @@ ExponentialContactTester::
 checkParametersAndPropertiesEqual(const ExponentialContactForce& spr) const {
     // Get the OpenSim properties
     const ExponentialContactForce::Parameters& a =
-        spr.get_contact_parameters();
+        spr.getParameters();
     const SimTK::ExponentialSpringParameters& b = spr.getParameters();
 
     const SimTK::Vec3& vecA = a.get_exponential_shape_parameters();
@@ -395,7 +395,7 @@ printDiscreteVariableAbstractValue(const string& pathName,
 
 // Execute a simulation of a bouncing block with exponential contact forces,
 // recording states along the way and serializing the states upon completion.
-TEST_CASE("Simulaltion")
+TEST_CASE("Simulation")
 {
     // Create the tester, build the tester model, and initialize the state.
     ExponentialContactTester tester;
@@ -411,8 +411,7 @@ TEST_CASE("Simulaltion")
     // Resetting the anchor points moves the anchor point directly below the
     // body station of the block. So, initially, there will be no elastic
     // friction force acting on the block.
-    ForceSet& fSet = tester.model->updForceSet();
-    ExponentialContactForce::resetAnchorPoints(fSet, state);
+    ExponentialContactForce::resetAnchorPoints(*tester.model, state);
 
     // Integrate
     Manager manager(*tester.model);
@@ -650,15 +649,16 @@ TEST_CASE("Contact Plane Transform")
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
 
-    // Contact Plane
-    SimTK::Rotation R;
-    R.setRotationFromAngleAboutX(1.234);
-    SimTK::Transform xformp;
-    xformp.set(R, Vec3(0.2,0.2,0.2));
-    tester.sprEC[0]->setContactPlaneTransform(xformp);
+    // Default Contact Plane Transform
+    Real angle = convertDegreesToRadians(90.0);
+    Rotation floorRot(-angle, XAxis);
+    Vec3 floorOrigin(0., -0.004, 0.);
+    Transform floorXForm(floorRot, floorOrigin);
+
+    // Check the accessor.
     SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
-    CHECK(xformf.p() == xformp.p());
-    CHECK(xformf.R() == xformp.R());
+    CHECK(xformf.p() == floorXForm.p());
+    CHECK(xformf.R() == floorXForm.R());
 }
 
 //_____________________________________________________________________________

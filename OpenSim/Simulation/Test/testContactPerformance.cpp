@@ -605,8 +605,7 @@ simulate()
         setInitialConditions(state, blockHC->getMobilizedBody(), -dz);
 
     // Reset the elastic anchor point for each ExponentialContactForce instance
-    ForceSet& fSet = model->updForceSet();
-    ExponentialContactForce::resetAnchorPoints(fSet, state);
+    ExponentialContactForce::resetAnchorPoints(*model, state);
 
     // Integrate
     Manager manager(*model);
