@@ -635,8 +635,6 @@ TEST_CASE("Discrete State Accessors")
     CHECK(vecf[2] == veci[2]);
 }
 
-
-//_____________________________________________________________________________
 // Test that the contact plane property of an ExponentialContactForce instance 
 // can be set and retrieved properly. This property, along with the properties
 // encapsulated in the ExponentialContactForce::Parameters class (see below), 
@@ -661,7 +659,6 @@ TEST_CASE("Contact Plane Transform")
     CHECK(xformf.R() == floorXForm.R());
 }
 
-//_____________________________________________________________________________
 // Test that the underlying spring parameters of an ExponentialContactForce instance
 // can be set and retrieved properly. In addition, verify that the
 // corresponding OpenSim properties and the underlying parameters that belong

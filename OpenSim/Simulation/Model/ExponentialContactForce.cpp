@@ -137,7 +137,7 @@ ExponentialContactForce() {
     setNull();
     constructProperties();
 }
-//_____________________________________________________________________________
+
 ExponentialContactForce::
 ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
     const Station& station, SimTK::ExponentialSpringParameters params)
