@@ -1,7 +1,7 @@
-﻿#ifndef OPENSIM_EXPONENTIAL_CONTACT_H_
-#define OPENSIM_EXPONENTIAL_CONTACT_H_
+﻿#ifndef OPENSIM_EXPONENTIAL_CONTACT_FORCE_H_
+#define OPENSIM_EXPONENTIAL_CONTACT_FORCE_H_
 /* -------------------------------------------------------------------------- *
- *                  OpenSim:  ExponentialContactForce.h                        *
+ *                  OpenSim:  ExponentialContactForce.h                       *
  * -------------------------------------------------------------------------- *
  * The OpenSim API is a toolkit for musculoskeletal modeling and simulation.  *
  * See http://opensim.stanford.edu and the NOTICE file for more information.  *
@@ -9,8 +9,9 @@
  * National Institutes of Health (U54 GM072970, R24 HD065690) and by DARPA    *
  * through the Warrior Web program.                                           *
  *                                                                            *
- * Copyright (c) 2022 Stanford University and the Authors                     *
+ * Copyright (c) 2024-2025 Stanford University and the Authors                *
  * Author(s): F. C. Anderson                                                  *
+ * Contributor(s): Nick Bianco                                                *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -31,22 +32,22 @@
 namespace OpenSim {
 
 //=============================================================================
-// ExponentialContact
+// ExponentialContactForce
 //=============================================================================
-/** Class ExponentialContact uses an "exponential spring" as a means
+/** Class ExponentialContactForce uses an "exponential spring" as a means
 of modeling contact of a specified point on a Body with a contact
 plane that is fixed to Ground. This specified point is referred to in this
-documentation as the "body station". Each ExponentialContact instance
+documentation as the "body station". Each ExponentialContactForce instance
 acts at only one body station. In practice, you should choose a number of
 body stations strategically located across the surface of a Body,
-and construct an ExponentialContact instance for each of those body stations.
-For example, if the Body were a cube, you would likely choose the body
-stations to be the corners of the cube and construct an ExponentialContact
-instance for each corner of the cube (so a total of 8 instances). The contact
-plane is typically used to model interactions with a floor, but is not
-limited to this use case. The contact plane can be rotated and translated
-relative to the Ground frame and so can be used to model a wall, ramp, or
-some other planar structure.
+and construct an ExponentialContactForce instance for each of those body
+stations. For example, if the Body were a cube, you would likely choose the
+body stations to be the corners of the cube and construct an
+ExponentialContactForce instance for each corner of the cube (so a total of 8
+instances). The contact plane is typically used to model interactions with a
+floor, but is not limited to this use case. The contact plane can be rotated
+and translated relative to the Ground frame and so can be used to model a
+wall, ramp, or some other planar structure.
 
 Aspects of the exponential contact model are described in the following
 publication:
@@ -55,7 +56,7 @@ publication:
         solution for vertical jumping in three dimensions. Computer Methods
         in Biomechanics and Biomedical Engineering 2(3):201-231.
 
-Under the covers, the OpenSim::ExponentialContact class encapsulates two
+Under the covers, the OpenSim::ExponentialContactForce class encapsulates two
 SimTK objects: ExponentialSpringForce and ExponentialSpringParameters.
 For the details concerning these classes, see the Simbody API
 documentation. A condensed version of that documentation is provided here.
@@ -212,7 +213,7 @@ CUSTOMIZABLE PARAMETERS
 -----------------------
 Customizable Topology-stage parameters specifying the characteristics of the
 exponential spring are managed using SimTK::ExponentialSpringParameters.
-To customize any of the Topology-stage parameters on an ExponentialContact
+To customize any of the Topology-stage parameters on an ExponentialContactForce
 instance, you should
 
 1) Create an ExponentialSpringParameters object. For example,
@@ -224,30 +225,30 @@ the parameters of that object. For example,
 
         myParams.setNormalViscosity(0.25);
 
-3) Use ExponentialContact::setParameters() to alter the parameters of one
-(or many) ExponentialContact instances. For example,
+3) Use ExponentialContactForce::setParameters() to alter the parameters of one
+(or many) ExponentialContactForce instances. For example,
 
-        ExponentialContact spr1, spr2;
+        ExponentialContactForce spr1, spr2;
         spr1.setParameters(myParams);
         spr2.setParameters(myParams);
 
 4) Realize the system to Stage::Topology. When a new set of parameters is
-set on an ExponentialContact instance, as above in step 3, the System will
-be invalidated at Stage::Topology. The System must therefore be realized at
-Stage::Topology (and hence Stage::Model) before a simulation can proceed.
+set on an ExponentialContactForce instance, as above in step 3, the System
+will be invalidated at Stage::Topology. The System must therefore be realized
+at Stage::Topology (and hence Stage::Model) before a simulation can proceed.
 
         system.realizeTopology();
 
-Note that each ExponentialContact instance owns its own private
+Note that each ExponentialContactForce instance owns its own private
 ExponentialSpringParameters object. The myParams object is just used to set
 the desired parameter values of the privately owned parameters object. It is
 fine for objects like myParams to go out of scope or for myParams objects
 allocated from the heap to be deleted.
 
 Therefore, also note that the parameter values possessed by an
-ExponentialContact instance do not necessarily correspond to the values
+ExponentialContactForce instance do not necessarily correspond to the values
 held by a local instance of ExponentialSpringParameters until a call to
-ExponentialContact::setParameters() is made.
+ExponentialContactForce::setParameters() is made.
 
 The default values of the parameters are expressed in units of Newtons,
 meters, seconds, and kilograms; however, you may use an alternate set of
@@ -259,8 +260,8 @@ interactions. For the full descriptions of the contact parameters see the
 Simbody API documentation for SimTK::ExponentialSpringParameters.
 
 @author F. C. Anderson **/
-class OSIMSIMULATION_API ExponentialContact : public Force {
-    OpenSim_DECLARE_CONCRETE_OBJECT(ExponentialContact, Force);
+class OSIMSIMULATION_API ExponentialContactForce : public Force {
+    OpenSim_DECLARE_CONCRETE_OBJECT(ExponentialContactForce, Force);
 
 public:
     class Parameters;
@@ -270,7 +271,8 @@ public:
     //-------------------------------------------------------------------------
     OpenSim_DECLARE_PROPERTY(contact_plane_transform, SimTK::Transform,
         "Orientation and location of the contact plane wrt Ground. The positive z-axis of the contact plane defines the normal.");
-    OpenSim_DECLARE_PROPERTY(contact_parameters, ExponentialContact::Parameters,
+    OpenSim_DECLARE_PROPERTY(contact_parameters, 
+        ExponentialContactForce::Parameters,
         "Customizable topology-stage parameters.");
 
     //-------------------------------------------------------------------------
@@ -283,9 +285,9 @@ public:
     // Construction
     //-------------------------------------------------------------------------
     /** Default constructor. */
-    ExponentialContact();
+    ExponentialContactForce();
 
-    /** Construct an ExponentialContact instance.
+    /** Construct an ExponentialContactForce instance.
     @param X_GP Transform specifying the location and orientation of the
     contact plane frame (P) with respect to the Ground frame (G). The positive
     z-axis of P defines the normal direction; the x-axis and y-axis of P
@@ -296,13 +298,13 @@ public:
     @param station The frame-fixed station at which the force is applied.
     @param params Optional parameters object used to customize the
     topology-stage characteristics of the contact model. */
-    explicit ExponentialContact(const SimTK::Transform& X_GP,
+    explicit ExponentialContactForce(const SimTK::Transform& X_GP,
         const Station& station,
         SimTK::ExponentialSpringParameters params =
         SimTK::ExponentialSpringParameters());
 
     /** Destructor. */
-    ~ExponentialContact() {
+    ~ExponentialContactForce() {
         if (_spr != NULL) delete _spr;
     }
 
@@ -319,10 +321,10 @@ public:
     void resetAnchorPoint(SimTK::State& state) const;
 
     /** Reset the elastic anchor points (friction spring zeros) of all
-    ExponentialContact instances in an OpenSim::ForceSet. This step is often
-    needed at the beginning of a simulation to ensure that a simulation does
-    not begin with large friction forces. Calling this method will invalidate
-    the System at Stage::Dynamics.
+    ExponentialContactForce instances in an OpenSim::ForceSet. This step is
+    often needed at the beginning of a simulation to ensure that a simulation
+    does not begin with large friction forces. Calling this method will
+    invalidate the System at Stage::Dynamics.
     @param fSet Force set.
     @param state State object on which to base the reset. */
     static void resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state);
@@ -334,7 +336,7 @@ public:
     contact plane in the Ground frame.
     Note that the value of the altered property is not pushed to the underlying
     SimTK::ExponentialSpringForce instance and so wil not have an affect on a
-    simulation or analysis. To have an effect, a new ExponentialContact
+    simulation or analysis. To have an effect, a new ExponentialContactForce
     instance must be constructed with the desired value of the poperty.
     The only reason to call this method is so that a Model can be serialized
     with the new desired property value. */
@@ -363,7 +365,7 @@ public:
     // Accessors for Discrete States
     //-------------------------------------------------------------------------
     /** Get a pointer to the SimTK::Subsystem from which this
-    ExponentialContact instance allocates its discrete states. */
+    ExponentialContactForce instance allocates its discrete states. */
     const SimTK::Subsystem* getSubsystem() const {
         return &_spr->getForceSubsystem();
     }
@@ -599,11 +601,11 @@ private:
     void constructProperties();
     SimTK::ExponentialSpringForce* _spr{NULL};
 
-}; // END of class ExponentialContact
+}; // END of class ExponentialContactForce
 
 
 //=============================================================================
-// ExponentialContact::Parameters
+// ExponentialContactForce::Parameters
 //=============================================================================
 /** This subclass helps manage the topology-stage parameters of the underlying
 SimTK::ExponentialSpringForce instance. These parameters (e.g., elasticity,
@@ -629,7 +631,7 @@ properties are update to match parameters.
 To change the values of individual parameters programmatically:
 ```
     // Get a modifiable copy of the underlying parameter object
-    // (`exp_contact` is a instance of ExponentialContact)
+    // (`exp_contact` is a instance of ExponentialContactForce)
     SimTK::ExponentialSpringParameters p = exp_contact.getParameters();
 
     // Make the desired changes to the copy using the appropropriate setters
@@ -637,14 +639,14 @@ To change the values of individual parameters programmatically:
     p.setFrictionViscosity(kvNew);
     ...
 
-    // Call ExponentialContact::setParameters() to push the new parameters
-    // to the underlying SimTK::ExponentialSpringForce object.
+    // Call ExponentialContactForce::setParameters() to push the new
+    // parameters to the underlying SimTK::ExponentialSpringForce object.
     exp_contact.setParameters(p);
 ```
 
 @author F. C. Anderson **/
-class ExponentialContact::Parameters : public Object {
-    OpenSim_DECLARE_CONCRETE_OBJECT(ExponentialContact::Parameters, Object);
+class ExponentialContactForce::Parameters : public Object {
+    OpenSim_DECLARE_CONCRETE_OBJECT(ExponentialContactForce::Parameters, Object);
 
 public:
     OpenSim_DECLARE_PROPERTY(exponential_shape_parameters, SimTK::Vec3,
@@ -674,16 +676,17 @@ public:
 
     /** Set the underlying SimTK parameters. This method is used to maintain
     consistency between OpenSim Properties and the underlying parameters.
-    The typical user of OpenSim::ExponentialContact will not have reason to
-    call this method. For setting contact parameters, the typical user should
-    call OpenSim::ExponentialContact::setParameters(). */
+    The typical user of OpenSim::ExponentialContactForce will not have reason
+    to call this method. For setting contact parameters, the typical user
+    should call OpenSim::ExponentialContactForce::setParameters(). */
     void setSimTKParameters(const SimTK::ExponentialSpringParameters& params);
 
     /** Get a read-only reference to the underlying SimTK parameters. This
     method is used to maintain consistency between OpenSim Properties and the
-    underlying parameters. The typical user of OpenSim::ExponentialContact will
-    not have reason to call this method. For getting contact parameters, the
-    typical user should call OpenSim::ExponentialContact::getParameters() */
+    underlying parameters. The typical user of OpenSim::ExponentialContactForce
+    will not have reason to call this method. For getting contact parameters,
+    the typical user should call
+    OpenSim::ExponentialContactForce::getParameters() */
     const SimTK::ExponentialSpringParameters& getSimTKParameters() const;
 
 private:
@@ -698,4 +701,4 @@ private:
 
 } // end of namespace OpenSim
 
-#endif // OPENSIM_EXPONENTIAL_SPRING_FORCE_H_
+#endif // OPENSIM_EXPONENTIAL_CONTACT_FORCE_H_
