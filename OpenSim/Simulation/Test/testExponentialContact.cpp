@@ -637,11 +637,11 @@ TEST_CASE("Discrete State Accessors")
 
 
 //_____________________________________________________________________________
-// Test that the contact plane property of an ExponentialContact instance can be
-// set and retrieved properly. This property, along with the properties
-// encapsulated in the ExponentialContact::Parameters class (see below), are
-// is needed to construct an ExponentialContact instance. The 
-// ExponentialContact::Parameters are tested below in the test case 
+// Test that the contact plane property of an ExponentialContactForce instance 
+// can be set and retrieved properly. This property, along with the properties
+// encapsulated in the ExponentialContactForce::Parameters class (see below), 
+// are is needed to construct an ExponentialContactForce instance. The 
+// ExponentialContactForce::Parameters are tested below in the test case 
 // "Spring Parameters".
 TEST_CASE("Contact Plane Transform")
 {
@@ -662,7 +662,7 @@ TEST_CASE("Contact Plane Transform")
 }
 
 //_____________________________________________________________________________
-// Test that the underlying spring parameters of an ExponentialContact instance
+// Test that the underlying spring parameters of an ExponentialContactForce instance
 // can be set and retrieved properly. In addition, verify that the
 // corresponding OpenSim properties and the underlying parameters that belong
 // to the SimTK::ExponentialSpringForce instance are kept consistent with
