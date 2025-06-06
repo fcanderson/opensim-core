@@ -706,7 +706,8 @@ int main(int argc, char** argv) {
 
 /**----------------------------------------------------------------------------
 * Useful memory leak detection stuff for Windows:
-*
+*/
+
 /*
 #ifdef _DEBUG
 #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
@@ -757,6 +758,7 @@ void testForXMLMemoryLeaks() {
     model.print(outFile);
 }
 
+*/
 
 /* Part of main ...
 
