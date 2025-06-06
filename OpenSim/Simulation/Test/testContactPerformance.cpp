@@ -1,5 +1,5 @@
 ﻿/* -------------------------------------------------------------------------- *
- *               OpenSim:  testContactPerformance.cpp                   *
+ *               OpenSim:  testContactPerformance.cpp                         *
  * -------------------------------------------------------------------------- *
  * The OpenSim API is a toolkit for musculoskeletal modeling and simulation.  *
  * See http://opensim.stanford.edu and the NOTICE file for more information.  *
@@ -7,7 +7,7 @@
  * National Institutes of Health (U54 GM072970, R24 HD065690) and by DARPA    *
  * through the Warrior Web program.                                           *
  *                                                                            *
- * Copyright (c) 2022-2023 Stanford University and the Authors                *
+ * Copyright (c) 2022-2025 Stanford University and the Authors                *
  * Author(s): F. C. Anderson                                                  *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
@@ -39,7 +39,7 @@
 #include <OpenSim/Simulation/Model/ContactSphere.h>
 #include <OpenSim/Simulation/Model/ElasticFoundationForce.h>
 #include <OpenSim/Simulation/Model/HuntCrossleyForce.h>
-#include <OpenSim/Simulation/Model/ExponentialContact.h>
+#include <OpenSim/Simulation/Model/ExponentialContactForce.h>
 #include <OpenSim/Simulation/Model/ExternalForce.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/Model/PhysicalOffsetFrame.h>
@@ -59,7 +59,7 @@ using namespace OpenSim;
 
 //=============================================================================
 /** Class ContactPerformanceTester provides a scope and framework for
-evaluating the performance of the ExponentialContact class relative to the
+evaluating the performance of the ExponentialContactForce class relative to the
 HuntCrossleyContact. Using this class, as  opposed to just a main() and
 C-style procedures, gets a lot of variables out of the global scope and allows
 for more structured memory management. */
@@ -161,7 +161,7 @@ public:
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
     OpenSim::Body* blockHC{NULL};
-    OpenSim::ExponentialContact* sprEC[n]{nullptr};
+    OpenSim::ExponentialContactForce* sprEC[n]{nullptr};
     OpenSim::HuntCrossleyForce* sprHC[n]{nullptr};
     OpenSim::ContactGeometry* geomHC[n]{nullptr};
     Storage fxData;
@@ -173,7 +173,10 @@ public:
 
 }; // End class ContactPerformanceTester declarations
 
-//_____________________________________________________________________________
+
+//-----------------------------------------------------------------------------
+// Method implementations for ContactPerformanceTester
+//-----------------------------------------------------------------------------
 int
 ContactPerformanceTester::
 parseCommandLine(int argc, char** argv)
@@ -227,7 +230,7 @@ parseCommandLine(int argc, char** argv)
     }
     return 0;
 }
-//_____________________________________________________________________________
+
 void
 ContactPerformanceTester::
 printUsage()
@@ -242,20 +245,20 @@ printUsage()
     cout << "All arguments are optional. If no arguments are specified, ";
     cout << "a 'Slide' will" << endl;
     cout << "be simulated with one block that uses ";
-    cout << "ExponentialContact instances," << endl;
+    cout << "ExponentialContactForce instances," << endl;
     cout << "with typical damping settings, ";
     cout << "with no extnerally applied force, " << endl;
     cout << "and with no visuals." << endl << endl;
 
     cout << "Example:" << endl;
-    cout << "To simulated 2 blocks (one with ExponentialContact and one";
+    cout << "To simulated 2 blocks (one with ExponentialContactForce and one";
     cout << " with Hunt-Crossley)" << endl;
     cout << "that bounce without energy dissipation and with Visuals, ";
     cout << "enter the following: " << endl << endl;
 
     cout << "$ testExponentialContact Bounce Both NoDamp Vis" << endl << endl;
 }
-//_____________________________________________________________________________
+
 void
 ContactPerformanceTester::
 printConditions() {
@@ -301,7 +304,7 @@ printConditions() {
     cout << "  max step size:  " << dt_max << " sec" << endl;
     cout << "             tf:  " << tf << " sec" << endl;
 }
-//_____________________________________________________________________________
+
 void
 ContactPerformanceTester::
 buildModel()
@@ -378,7 +381,7 @@ buildModel()
     // Build the System
     model->buildSystem();
 }
-//______________________________________________________________________________
+
 void
 ContactPerformanceTester::
 setForceDataHeader()
@@ -395,7 +398,7 @@ setForceDataHeader()
     lab.append("force.z");
     fxData.setColumnLabels(lab);
 }
-//______________________________________________________________________________
+
 void
 ContactPerformanceTester::
 setForceData(double t, const SimTK::Vec3& point, const SimTK::Vec3& force)
@@ -408,7 +411,7 @@ setForceData(double t, const SimTK::Vec3& point, const SimTK::Vec3& force)
     StateVector sv(t, data);
     fxData.append(sv);
 }
-//______________________________________________________________________________
+
 OpenSim::Body*
 ContactPerformanceTester::
 addBlock(const std::string& suffix)
@@ -432,7 +435,7 @@ addBlock(const std::string& suffix)
 
     return block;
 }
-//______________________________________________________________________________
+
 void
 ContactPerformanceTester::
 addExponentialContact(OpenSim::Body* block)
@@ -457,7 +460,7 @@ addExponentialContact(OpenSim::Body* block)
     std::string name = "";
     for (int i = 0; i < n; ++i) {
         name = "Exp" + std::to_string(i);
-        sprEC[i] = new OpenSim::ExponentialContact(floorXForm,
+        sprEC[i] = new OpenSim::ExponentialContactForce(floorXForm,
             block->getName(), corner[i], params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
@@ -504,7 +507,7 @@ addHuntCrossleyContact(OpenSim::Body* block)
         model->addForce(sprHC[i]);
     }
 }
-//_____________________________________________________________________________
+
 // dz allows for the body to be shifted along the z axis. This is useful for
 // displacing the Exp and Hunt models upward or downward so that the initial
 // normal contact force is reasonable.
@@ -580,7 +583,7 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
     }
 }
 
-//_____________________________________________________________________________
+
 void
 ContactPerformanceTester::
 simulate()
@@ -598,9 +601,9 @@ simulate()
     if (blockHC != NULL)
         setInitialConditions(state, blockHC->getMobilizedBody(), -dz);
 
-    // Reset the elastic anchor point for each ExponentialContact instance
+    // Reset the elastic anchor point for each ExponentialContactForce instance
     ForceSet& fSet = model->updForceSet();
-    ExponentialContact::resetAnchorPoints(fSet, state);
+    ExponentialContactForce::resetAnchorPoints(fSet, state);
 
     // Integrate
     Manager manager(*model);
@@ -623,21 +626,19 @@ simulate()
 }
 
 
-
-
-
-//_____________________________________________________________________________
-/* Entry Point (i.e., main())
-
+//-----------------------------------------------------------------------------
+// Main (execution entry point)
+//-----------------------------------------------------------------------------
+/*
 The motion of a 10 kg, 6 degree-of-freedom block and its force interaction
 with a laboratory floor are simulated.
 
 Contact with the floor is modeled using either
-    1) 8 ExponentialContact instances, one at each corner of the block, or
+    1) 8 ExponentialContactForce instances, one at each corner of the block, or
     2) 8 HuntCrossleyForce instances, one at each corner of the block.
 
 For a side-by-side comparison of simulated motions, two blocks (one using
-the ExponentialContact class for contact and the other using the
+the ExponentialContactForce class for contact and the other using the
 HuntCrossleyForce class) can be created and visualized simultaneously.
 
 For an assessment of computational performance, just one block should be
@@ -697,7 +698,9 @@ int main(int argc, char** argv) {
 }
 
 
-
+//-----------------------------------------------------------------------------
+// Memory leak detection code - save for future use
+//-----------------------------------------------------------------------------
 
 /**----------------------------------------------------------------------------
 * Useful memory leak detection stuff for Windows:
@@ -713,7 +716,6 @@ int main(int argc, char** argv) {
 
 #define _CRTDBG_MAP_ALLOC
 */
-
 
 
 /*

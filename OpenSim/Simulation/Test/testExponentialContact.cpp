@@ -1,4 +1,4 @@
-/* -------------------------------------------------------------------------- *
+/* --------------------------------------------------------------------------*
 *                OpenSim:  testExponentialContact.cpp                        *
 * -------------------------------------------------------------------------- *
 * The OpenSim API is a toolkit for musculoskeletal modeling and simulation.  *
@@ -38,7 +38,7 @@
 #include <OpenSim/Simulation/Model/ContactSphere.h>
 #include <OpenSim/Simulation/Model/ElasticFoundationForce.h>
 #include <OpenSim/Simulation/Model/HuntCrossleyForce.h>
-#include <OpenSim/Simulation/Model/ExponentialContact.h>
+#include <OpenSim/Simulation/Model/ExponentialContactForce.h>
 #include <OpenSim/Simulation/Model/ExternalForce.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/Model/PhysicalOffsetFrame.h>
@@ -61,10 +61,10 @@ using std::string;
 using std::vector;
 
 //=============================================================================
-/** Class ExponentialContactTester provides a scope and framework for
-evaluating and testing the ExponentialContact class. Using this testing class,
-gets a lot of variables out of the global scope and allows for more structured
-memory management. */
+// Class ExponentialContactTester provides a scope and framework for
+// evaluating and testing the ExponentialContactForce class. Using this testing
+// class gets a lot of variables out of the global scope and allows for more
+// structured memory management.
 class ExponentialContactTester
 {
 public:
@@ -123,7 +123,8 @@ public:
 
     // Test stuff not covered elsewhere.
     void test();
-    void checkParametersAndPropertiesEqual(const ExponentialContact& spr) const;
+    void checkParametersAndPropertiesEqual(
+        const ExponentialContactForce& spr) const;
     void testModelSerialization();
     void printDiscreteVariableAbstractValue(const string& pathName,
         const AbstractValue& value) const;
@@ -153,7 +154,7 @@ public:
     // Model and parts
     Model* model{NULL};
     OpenSim::Body* blockEC{NULL};
-    OpenSim::ExponentialContact* sprEC[n]{nullptr};
+    OpenSim::ExponentialContactForce* sprEC[n]{nullptr};
     // Expected simulation results for running the Simulation test case
     static const int expectedTrys{1796};
     static const int expectedSteps{1237};
@@ -163,8 +164,10 @@ public:
 
 }; // End class ExponentialContactTester declarations
 
-//_____________________________________________________________________________
-// Build the model
+
+//-----------------------------------------------------------------------------
+// Method implementations for ExponentialContactTester
+//-----------------------------------------------------------------------------
 void
 ExponentialContactTester::
 buildModel()
@@ -186,7 +189,7 @@ buildModel()
     // Build the System
     model->buildSystem();
 }
-//______________________________________________________________________________
+
 OpenSim::Body*
 ExponentialContactTester::
 addBlock(const std::string& suffix)
@@ -210,7 +213,7 @@ addBlock(const std::string& suffix)
 
     return block;
 }
-//______________________________________________________________________________
+
 void
 ExponentialContactTester::
 addExponentialContact(OpenSim::Body* block)
@@ -235,13 +238,13 @@ addExponentialContact(OpenSim::Body* block)
     std::string name = "";
     for (int i = 0; i < n; ++i) {
         name = "Exp" + std::to_string(i);
-        sprEC[i] = new OpenSim::ExponentialContact(floorXForm,
+        sprEC[i] = new OpenSim::ExponentialContactForce(floorXForm,
             block->getName(), corner[i], params);
         sprEC[i]->setName(name);
         model->addForce(sprEC[i]);
     }
 }
-//_____________________________________________________________________________
+
 // dz allows for the body to be shifted along the z axis. This is useful for
 // displacing the body spring points upward above the floor.
 void
@@ -315,12 +318,13 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
         cout << "Unrecognized set of initial conditions!" << endl;
     }
 }
-//_____________________________________________________________________________
+
 void
 ExponentialContactTester::
-checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
+checkParametersAndPropertiesEqual(const ExponentialContactForce& spr) const {
     // Get the OpenSim properties
-    const ExponentialContact::Parameters& a = spr.get_contact_parameters();
+    const ExponentialContactForce::Parameters& a =
+        spr.get_contact_parameters();
     const SimTK::ExponentialSpringParameters& b = spr.getParameters();
 
     const SimTK::Vec3& vecA = a.get_exponential_shape_parameters();
@@ -359,7 +363,7 @@ checkParametersAndPropertiesEqual(const ExponentialContact& spr) const {
     valB = b.getInitialMuKinetic();
     CHECK(valA == valB);
 }
-//_____________________________________________________________________________
+
 void
 ExponentialContactTester::
 printDiscreteVariableAbstractValue(const string& pathName,
@@ -380,10 +384,10 @@ printDiscreteVariableAbstractValue(const string& pathName,
 
 
 //=============================================================================
-// Test cases below here.
+// Test Cases
 //=============================================================================
-//_____________________________________________________________________________
-// Execute a simulation of a bouncing block with exponential contact,
+
+// Execute a simulation of a bouncing block with exponential contact forces,
 // recording states along the way and serializing the states upon completion.
 TEST_CASE("Simulaltion")
 {
@@ -397,13 +401,12 @@ TEST_CASE("Simulaltion")
     tester.whichInit = ExponentialContactTester::SpinSlide;
     tester.setInitialConditions(state, tester.blockEC->getMobilizedBody(), dz);
 
-    // Reset the elastic anchor point for each ExponentialContact instance
+    // Reset the elastic anchor point for each ExponentialContactForce instance
     // Resetting the anchor points moves the anchor point directly below the
-    // body station of the block, which is where the spring force will be
-    // applied. So, initially, there will be no elastic friction force
-    // acting on the block.
+    // body station of the block. So, initially, there will be no elastic
+    // friction force acting on the block.
     ForceSet& fSet = tester.model->updForceSet();
-    ExponentialContact::resetAnchorPoints(fSet, state);
+    ExponentialContactForce::resetAnchorPoints(fSet, state);
 
     // Integrate
     Manager manager(*tester.model);
@@ -447,7 +450,7 @@ TEST_CASE("Simulaltion")
     CHECK(statesTraj.getSize() == statesTrajDeserialized.size());
 }
 
-//_____________________________________________________________________________
+
 // Test that the model can be serialized and deserialized.
 TEST_CASE("Model Serialization")
 {
@@ -468,10 +471,10 @@ TEST_CASE("Model Serialization")
     int n = fSet1.getSize();
     for (int i = 0; i < n; ++i) {
         try {
-            ExponentialContact& ec0 =
-                dynamic_cast<ExponentialContact&>(fSet0.get(i));
-            ExponentialContact& ec1 =
-                dynamic_cast<ExponentialContact&>(fSet1.get(i));
+            ExponentialContactForce& ec0 =
+                dynamic_cast<ExponentialContactForce&>(fSet0.get(i));
+            ExponentialContactForce& ec1 =
+                dynamic_cast<ExponentialContactForce&>(fSet1.get(i));
 
             CHECK(ec1.getContactPlaneTransform() ==
                     ec0.getContactPlaneTransform());
@@ -484,7 +487,7 @@ TEST_CASE("Model Serialization")
 
         } catch (const std::bad_cast&) {
             // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContact.
+            // OpenSim::Force that is not an ExponentialContactForce.
         }
     }
 
@@ -505,13 +508,13 @@ TEST_CASE("Model Serialization")
     n = fSet0.getSize();
     for (int i = 0; i < n; ++i) {
         try {
-            ExponentialContact& ec =
-                dynamic_cast<ExponentialContact&>(fSet0.get(i));
+            ExponentialContactForce& ec =
+                dynamic_cast<ExponentialContactForce&>(fSet0.get(i));
             ec.setParameters(p);
 
         } catch (const std::bad_cast&) {
             // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContact.
+            // OpenSim::Force that is not an ExponentialContactForce.
         }
     }
 
@@ -527,10 +530,10 @@ TEST_CASE("Model Serialization")
     n = fSet2.getSize();
     for (int i = 0; i < n; ++i) {
         try {
-            ExponentialContact& ec0 =
-                dynamic_cast<ExponentialContact&>(fSet0.get(i));
-            ExponentialContact& ec2 =
-                dynamic_cast<ExponentialContact&>(fSet2.get(i));
+            ExponentialContactForce& ec0 =
+                dynamic_cast<ExponentialContactForce&>(fSet0.get(i));
+            ExponentialContactForce& ec2 =
+                dynamic_cast<ExponentialContactForce&>(fSet2.get(i));
 
             CHECK(ec2.getContactPlaneTransform() ==
                 ec0.getContactPlaneTransform());
@@ -543,15 +546,15 @@ TEST_CASE("Model Serialization")
 
         } catch (const std::bad_cast&) {
             // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContact.
+            // OpenSim::Force that is not an ExponentialContactForce.
         }
     }
 
 }
 
-//_____________________________________________________________________________
-// Test that the discrete states of an ExponentialContact instance can be set
-// and retrieved properly.
+
+// Test that the discrete states of an ExponentialContactForce instance can be
+// set and retrieved properly.
 TEST_CASE("Discrete State Accessors")
 {
     // Create the tester and build the tester model.
@@ -567,7 +570,7 @@ TEST_CASE("Discrete State Accessors")
     }
 
     // Pick a contact instance to manipulate.
-    ExponentialContact& spr = *tester.sprEC[0];
+    ExponentialContactForce& spr = *tester.sprEC[0];
 
     // Declarations
     double deltaDbl = 0.1;
@@ -590,8 +593,8 @@ TEST_CASE("Discrete State Accessors")
     // Sliding
     // Note that the "sliding" state is an auto-update discrete state and so
     // it is not settable. It is only retrievable. The "sliding" state is
-    // updated by the ExponentialContact instance during simulation after each
-    // successful integration step.
+    // updated by the ExponentialContactForce instance during simulation after
+    // each successful integration step.
     // There are bounds (0 <= sliding <= 1.0) that can be checked, however.
     // In addition, retrieving the sldiing state also requites the state to be
     // realized to Stage::Dynamics or higher, so we can check that an
@@ -624,14 +627,13 @@ TEST_CASE("Discrete State Accessors")
 }
 
 
-//_____________________________________________________________________________
-// Test that the properties of an ExponentialContact instance can be
+// Test that the properties of an ExponentialContactForce instance can be
 // set and retrieved properly. These properties, along with the properties
-// encapsulated in the ExponentialContact::Parameters class (see below), are
-// the variables needed to construct an ExponentialContact instance. These
-// properties include the contact plane transform, body name, and body station,
-// along with the ExponentialContact::Parameters, which are tested
-// below in the test case "Spring Parameters".
+// encapsulated in the ExponentialContactForce::Parameters class (see below),
+// are the variables needed to construct an ExponentialContactForce instance.
+// These properties include the contact plane transform, body name, and body
+// station, along with the ExponentialContactForce::Parameters, which are
+// tested below in the test case "Spring Parameters".
 TEST_CASE("Property Accessors")
 {
     // Create the tester and build the tester model.
@@ -666,9 +668,9 @@ TEST_CASE("Property Accessors")
     CHECK(stationf[2] == stationi[2] + delta[2]);
 }
 
-//_____________________________________________________________________________
-// Test that the underlying spring parameters of an ExponentialContact instance
-// can be set and retrieved properly. In addition, verify that the
+
+// Test that the underlying spring parameters of an ExponentialContactForce
+// instance can be set and retrieved properly. In addition, verify that the
 // corresponding OpenSim properties and the underlying parameters that belong
 // to the SimTK::ExponentialSpringForce instance are kept consistent with
 // one another.
@@ -684,7 +686,7 @@ TEST_CASE("Spring Parameters")
     }
 
     // Pick a contact instance to manipulate.
-    ExponentialContact& spr = *tester.sprEC[0];
+    ExponentialContactForce& spr = *tester.sprEC[0];
 
     // Save the starting parameters.
     // Note that pi is not a reference. The underlying parameters of spr can
@@ -845,8 +847,9 @@ TEST_CASE("Spring Parameters")
 }
 
 
-/* Legacy code that is a good example of low-level discrete state access...
-//_____________________________________________________________________________
+/* This is not currently used in the test suite, but it is a good example of
+// how to set/get discrete variables at a low level.
+
 // The only types that are handled are double and Vec3 at this point.
 // The significant changes in how Discrete Variables are handled are:
 //      1. Values are now not assumed to be doubles but are AbstractValues.

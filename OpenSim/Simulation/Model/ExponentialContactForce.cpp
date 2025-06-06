@@ -1,5 +1,5 @@
 ﻿/* -------------------------------------------------------------------------- *
- *                   OpenSim:  ExponentialContact.cpp                         *
+ *                   OpenSim:  ExponentialContactForce.cpp                    *
  * -------------------------------------------------------------------------- *
  * The OpenSim API is a toolkit for musculoskeletal modeling and simulation.  *
  * See http://opensim.stanford.edu and the NOTICE file for more information.  *
@@ -7,8 +7,9 @@
  * National Institutes of Health (U54 GM072970, R24 HD065690) and by DARPA    *
  * through the Warrior Web program.                                           *
  *                                                                            *
- * Copyright (c) 2022-20232 Stanford University and the Authors               *
+ * Copyright (c) 2024-2025 Stanford University and the Authors                *
  * Author(s):  F. C. Anderson                                                 *
+ * Contributor(s): Nick Bianco                                                *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -23,7 +24,7 @@
 
 #include "Model.h"
 #include "simbody/internal/SimbodyMatterSubsystem.h"
-#include "ExponentialContact.h"
+#include "ExponentialContactForce.h"
 
 using namespace OpenSim;
 using namespace std;
@@ -33,28 +34,27 @@ using SimTK::State;
 
 
 //=============================================================================
-// ExponentialContact::Parameters
+// ExponentialContactForce::Parameters
 //=============================================================================
-//_____________________________________________________________________________
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 Parameters() {
     setNull();
     constructProperties();
 }
-//_____________________________________________________________________________
-ExponentialContact::Parameters::
+
+ExponentialContactForce::Parameters::
 Parameters(const SimTK::ExponentialSpringParameters& params) {
     setNull();
     _stkparams = params;
     constructProperties();
 }
-//_____________________________________________________________________________
-void ExponentialContact::Parameters::setNull() {
+
+void ExponentialContactForce::Parameters::setNull() {
     setAuthors("F. C. Anderson");
 }
-//_____________________________________________________________________________
+
 void
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 constructProperties() {
     SimTK::Vec3 shape;
     _stkparams.getShapeParameters(shape[0], shape[1], shape[2]);
@@ -67,10 +67,9 @@ constructProperties() {
     constructProperty_initial_mu_static(_stkparams.getInitialMuStatic());
     constructProperty_initial_mu_kinetic(_stkparams.getInitialMuKinetic());
 }
-//_____________________________________________________________________________
-// Update the Properties based on the SimTK::ExponentialSpringParameters.
+
 void
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 updateProperties() {
     SimTK::Vec3 shape;
     _stkparams.getShapeParameters(shape[0], shape[1], shape[2]);
@@ -83,10 +82,9 @@ updateProperties() {
     set_initial_mu_static(_stkparams.getInitialMuStatic());
     set_initial_mu_kinetic(_stkparams.getInitialMuKinetic());
 }
-//_____________________________________________________________________________
-// Update the SimTK::ExponentialSpringParamters based on the Properties.
+
 void
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 updateParameters() {
     const SimTK::Vec3 shape = get_exponential_shape_parameters();
     _stkparams.setShapeParameters(shape[0], shape[1], shape[2]);
@@ -98,7 +96,7 @@ updateParameters() {
     _stkparams.setInitialMuStatic(get_initial_mu_static());
     _stkparams.setInitialMuKinetic(get_initial_mu_kinetic());
 }
-//_____________________________________________________________________________
+
 // This method is needed to ensure that the SimTK::ExponentialSpringParameters
 // member variable (_stkparam) is kept consistent with the properties.
 // It is necessary to have the _stkparams member variable because there needs
@@ -110,41 +108,38 @@ updateParameters() {
 // All parameter sets/gets go through the SimTK::ExponentialSpringParameters
 // interface (i.e., through _stkparams).
 void
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 updateFromXMLNode(SimTK::Xml::Element& node, int versionNumber) {
     Super::updateFromXMLNode(node, versionNumber);
     updateParameters(); // catching any invalid property values in the process
     updateProperties(); // pushes valid parameters back to the properties.
 }
-//_____________________________________________________________________________
-// Note that the OpenSim Properties are updated as well.
+
 void
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 setSimTKParameters(const SimTK::ExponentialSpringParameters& params) {
     _stkparams = params;
     updateProperties();
 }
-//_____________________________________________________________________________
-// Get a read-only reference to the SimTK::ExponentialSpringParameters held
-// by this instance.
+
 const SimTK::ExponentialSpringParameters&
-ExponentialContact::Parameters::
+ExponentialContactForce::Parameters::
 getSimTKParameters() const {
     return _stkparams;
 }
 
 
 //=============================================================================
-// ExponentialContact
+// ExponentialContactForce
 //=============================================================================
-//_____________________________________________________________________________
-ExponentialContact::ExponentialContact() {
+ExponentialContactForce::
+ExponentialContactForce() {
     setNull();
     constructProperties();
 }
-//_____________________________________________________________________________
-ExponentialContact::
-ExponentialContact(const SimTK::Transform& contactPlaneXform,
+
+ExponentialContactForce::
+ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
     const std::string& bodyName, const SimTK::Vec3& station,
     SimTK::ExponentialSpringParameters params)
 {
@@ -155,16 +150,16 @@ ExponentialContact(const SimTK::Transform& contactPlaneXform,
     setBodyStation(station);
     setParameters(params);
 }
-//_____________________________________________________________________________
+
 void
-ExponentialContact::
+ExponentialContactForce::
 setNull() {
     setAuthors("F. C. Anderson");
     _spr = NULL;
 }
-//_____________________________________________________________________________
+
 void
-ExponentialContact::
+ExponentialContactForce::
 constructProperties() {
     SimTK::Transform X_GP;
     SimTK::Vec3 origin(0.0);
@@ -174,15 +169,15 @@ constructProperties() {
     constructProperty_body_station(origin);
     constructProperty_contact_parameters(params);
 }
-//_____________________________________________________________________________
+
 void
-ExponentialContact::
+ExponentialContactForce::
 updateFromXMLNode(SimTK::Xml::Element& node, int versionNumber) {
     Super::updateFromXMLNode(node, versionNumber);
 }
-//_____________________________________________________________________________
+
 void
-ExponentialContact::
+ExponentialContactForce::
 extendConnectToModel(OpenSim::Model& model) {
     // Allow based class to connect first
     Super::extendConnectToModel(model);
@@ -195,12 +190,12 @@ extendConnectToModel(OpenSim::Model& model) {
         _body = &(getModel().getComponent<PhysicalFrame>(
                 "./bodyset/" + bodyName));
 }
-//_____________________________________________________________________________
+
 // This method is where the actual underlying contact force subsystem
 // (i.e., SimTK::ExponentialSpringForce) is constructed and added to the
-// OpenSim::Model (wrapped by OpenSim::ExponentialContact).
+// OpenSim::Model (wrapped by OpenSim::ExponentialContactForce).
 void
-ExponentialContact::
+ExponentialContactForce::
 extendAddToSystem(SimTK::MultibodySystem& system) const {
     // Extend the OpenSim::Force parent
     Super::extendAddToSystem(system);
@@ -214,8 +209,8 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
             _body->getMobilizedBody(), station, getParameters());
 
     // Get the subsystem index so we can access the SimTK::Force later.
-    ExponentialContact* mutableThis =
-        const_cast<ExponentialContact *>(this);
+    ExponentialContactForce* mutableThis =
+        const_cast<ExponentialContactForce *>(this);
     mutableThis->_spr = spr;
     mutableThis->_index = spr->getForceIndex();
 
@@ -231,21 +226,18 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
     addDiscreteVariable(name, SimTK::Stage::Dynamics, allocate);
 }
 
-
-//_____________________________________________________________________________
-// F. C. Anderson (Jan 2023)
-// This method is needed because class OpenSim::ExponentialContact has 4
+// This method is needed because class OpenSim::ExponentialContactForce has 4
 // discrete states that are allocated in
 // SimTK::ExponentialSpringForce::realizeTopology(), not in
 // OpenSim::Component::extendRealizeTopology().
 // These states are added to the OpenSim map of discrete states
 // (i.e., Component::_namedDiscreteVariableInfo) so that they are accessible
-// in OpenSim. See ExponentialContact::extendAddToSystem(). However, because
-// these discrete states are not allocated by OpenSim::Component, OpenSim has
-// no knowledge of their indices into the SimTK::State. The purpose of this
-// method is to properly initialize those indices.
+// in OpenSim. See ExponentialContactForce::extendAddToSystem(). However,
+// because these discrete states are not allocated by OpenSim::Component,
+// OpenSim has no knowledge of their indices into the SimTK::State. The purpose
+// of this method is to properly initialize those indices.
 void
-ExponentialContact::
+ExponentialContactForce::
 extendRealizeTopology(SimTK::State& state) const {
 
     Super::extendRealizeTopology(state);
@@ -255,9 +247,9 @@ extendRealizeTopology(SimTK::State& state) const {
     // always be called before this method !?!?
     //
     // Maybe. Perhaps the ExponentialSpringForce object will always
-    // be listed in the SimTK::System before the ExponentialContact component?
-    // If not, then it is possible that getMuStaticStateIndex() will
-    // return a bad index.
+    // be listed in the SimTK::System before the ExponentialContactForce
+    // component? If not, then it is possible that getMuStaticStateIndex()
+    // will return a bad index.
     //
     // Or, perhaps the call above to Super::extendRealizeTopology(state)
     // ensures that the SimTK::ExponentialSpringForce::realizeTopology()
@@ -268,7 +260,7 @@ extendRealizeTopology(SimTK::State& state) const {
     //
     // If there are mysterious failures because of a bad State index, the
     // source of the issue may be that ExponentialSpringForce::realizeTopology
-    // was not called prior to ExponentialContact::extendRealizeTopology.
+    // was not called prior to ExponentialContactForce::extendRealizeTopology.
 
     const SimTK::Subsystem* subsys = getSubsystem();
     const SimTK::SubsystemIndex ssIndex = subsys->getMySubsystemIndex();
@@ -293,37 +285,33 @@ extendRealizeTopology(SimTK::State& state) const {
     initializeDiscreteVariableIndexes(name, ssIndex, dvIndex);
 }
 
-
-
 //-----------------------------------------------------------------------------
 // Utility
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 void
-ExponentialContact::
+ExponentialContactForce::
 resetAnchorPoint(SimTK::State& state) const {
     _spr->resetAnchorPoint(state);
 }
-//_____________________________________________________________________________
+
 // There might be a more computationally efficient way to do reset the anchor
-// points of all ExponentialContact instances in a ForceSet (right now this
-// method loops through all instancesin the force set and does a dynamic cast,
-// but this is a simple and thorough way to do it. The computational cost
-// shouldn't be an issue because this method is usually only called once at
-// the beginning of a simulation.
+// points of all ExponentialContactForce instances in a ForceSet. Right now,
+// this method loops through all instances in the force set and does a dynamic
+// cast. The computational cost shouldn't be an issue because this method is
+// usually only called once at the beginning of a simulation.
 void
-ExponentialContact::
+ExponentialContactForce::
 resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
     int i;
     int n = fSet.getSize();
     for (i = 0; i < n; ++i) {
         try {
-            ExponentialContact& ec =
-                    dynamic_cast<ExponentialContact&>(fSet.get(i));
+            ExponentialContactForce& ec =
+                    dynamic_cast<ExponentialContactForce&>(fSet.get(i));
             ec.resetAnchorPoint(state);
         } catch (const std::bad_cast&) {
             // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContact.
+            // OpenSim::Force that is not an ExponentialContactForce.
         }
     }
 }
@@ -331,19 +319,18 @@ resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
 //-----------------------------------------------------------------------------
 // ACCESSORS for properties
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 void
-ExponentialContact::
+ExponentialContactForce::
 setParameters(const SimTK::ExponentialSpringParameters& params) {
-    ExponentialContact::Parameters& p = upd_contact_parameters();
+    ExponentialContactForce::Parameters& p = upd_contact_parameters();
     p.setSimTKParameters(params);
-    // Push the new parameters to the SimTK::ExponentialSpringForce instance
-    // The following call will invalidate the System at Stage::Topology
+    // Push the new parameters to the SimTK::ExponentialSpringForce instance.
+    // The following call will invalidate the System at Stage::Topology.
     if (_spr != NULL) _spr->setParameters(params);
 }
-//_____________________________________________________________________________
+
 const SimTK::ExponentialSpringParameters&
-ExponentialContact::
+ExponentialContactForce::
 getParameters() const {
     return get_contact_parameters().getSimTKParameters();
 }
@@ -351,35 +338,32 @@ getParameters() const {
 //-----------------------------------------------------------------------------
 // ACCESSORS for states
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 void
-ExponentialContact::
+ExponentialContactForce::
 setMuStatic(SimTK::State& state, SimTK::Real mus) {
     _spr->setMuStatic(state, mus);
 }
-//_____________________________________________________________________________
+
 SimTK::Real
-ExponentialContact::
+ExponentialContactForce::
 getMuStatic(const SimTK::State& state) const {
     return _spr->getMuStatic(state);
 }
 
-//_____________________________________________________________________________
 void
-ExponentialContact::
+ExponentialContactForce::
 setMuKinetic(SimTK::State& state, SimTK::Real mus) {
     _spr->setMuKinetic(state, mus);
 }
-//_____________________________________________________________________________
+
 SimTK::Real
-ExponentialContact::
+ExponentialContactForce::
 getMuKinetic(const SimTK::State& state) const {
     return _spr->getMuKinetic(state);
 }
 
-//_____________________________________________________________________________
 SimTK::Real
-ExponentialContact::
+ExponentialContactForce::
 getSliding(const SimTK::State& state) const {
     return _spr->getSliding(state);
 }
@@ -387,75 +371,74 @@ getSliding(const SimTK::State& state) const {
 //-----------------------------------------------------------------------------
 // ACCESSORS for data cache entries
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getNormalForceElasticPart(const State& state, bool inGround) const {
     return _spr->getNormalForceElasticPart(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getNormalForceDampingPart(const State& state, bool inGround) const {
     return _spr->getNormalForceDampingPart(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getNormalForce(const State& state, bool inGround) const {
     return _spr->getNormalForce(state, inGround);
 }
-//_____________________________________________________________________________
+
 Real
-ExponentialContact::
+ExponentialContactForce::
 getMu(const State& state) const {
     return _spr->getMu(state);
 }
-//_____________________________________________________________________________
+
 Real
-ExponentialContact::
+ExponentialContactForce::
 getFrictionForceLimit(const SimTK::State& state) const {
     return _spr->getFrictionForceLimit(state);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getFrictionForceElasticPart(const State& state, bool inGround) const {
     return _spr->getFrictionForceElasticPart(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getFrictionForceDampingPart(const State& state, bool inGround) const {
     return _spr->getFrictionForceDampingPart(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getFrictionForce(const State& state, bool inGround) const {
     return _spr->getFrictionForce(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getForce(const State& state, bool inGround) const {
     return _spr->getForce(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getStationPosition(const State& state, bool inGround) const {
     return _spr->getStationPosition(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getStationVelocity(const State& state, bool inGround) const {
     return _spr->getStationVelocity(state, inGround);
 }
-//_____________________________________________________________________________
+
 Vec3
-ExponentialContact::
+ExponentialContactForce::
 getAnchorPointPosition(const State& state, bool inGround) const {
     return _spr->getAnchorPointPosition(state, inGround);
 }
@@ -463,9 +446,8 @@ getAnchorPointPosition(const State& state, bool inGround) const {
 //-----------------------------------------------------------------------------
 // Reporting
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 OpenSim::Array<std::string>
-ExponentialContact::
+ExponentialContactForce::
 getRecordLabels() const {
     OpenSim::Array<std::string> labels("");
     string name = getName();  // Name of this contact instance.
@@ -490,9 +472,9 @@ getRecordLabels() const {
 
     return labels;
 }
-//_____________________________________________________________________________
+
 OpenSim::Array<double>
-ExponentialContact::
+ExponentialContactForce::
 getRecordValues(const SimTK::State& state) const  {
     OpenSim::Array<double> values(0.0);
 
@@ -534,11 +516,10 @@ getRecordValues(const SimTK::State& state) const  {
 //-----------------------------------------------------------------------------
 // Internal Testing
 //-----------------------------------------------------------------------------
-//_____________________________________________________________________________
 void
-ExponentialContact::
+ExponentialContactForce::
 assertPropertiesAndParametersEqual() const {
-    const ExponentialContact::Parameters& a = get_contact_parameters();
+    const ExponentialContactForce::Parameters& a = get_contact_parameters();
     const SimTK::ExponentialSpringParameters& b = getParameters();
 
     const SimTK::Vec3& vecA = a.get_exponential_shape_parameters();
