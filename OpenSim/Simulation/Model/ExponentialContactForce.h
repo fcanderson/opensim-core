@@ -572,7 +572,7 @@ private:
     //-------------------------------------------------------------------------
     OpenSim_DECLARE_PROPERTY(contact_plane_transform, SimTK::Transform,
         "Orientation and location of the contact plane wrt Ground. The positive z-axis of the contact plane defines the normal.");
-    OpenSim_DECLARE_PROPERTY(contact_parameters, 
+    OpenSim_DECLARE_PROPERTY(contact_parameters,
         ExponentialContactForce::Parameters,
         "Customizable topology-stage parameters.");
 
