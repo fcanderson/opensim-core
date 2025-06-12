@@ -149,6 +149,11 @@ ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
     setParameters(params);
 }
 
+ExponentialContactForce::
+~ExponentialContactForce() {
+    if (_spr != nullptr) delete _spr;
+}
+
 void
 ExponentialContactForce::
 setNull() {

@@ -59,9 +59,7 @@ SimTK objects: ExponentialSpringForce and ExponentialSpringParameters.
 For the details concerning these classes, see the Simbody API
 documentation. A condensed version of that documentation is provided here.
 
-----------------------------------
-Computations and Coordinate Frames
-----------------------------------
+### Computations and Coordinate Frames
 The positive z-axis of the contact plane defines its normal. The positive
 z-axis is the axis along which the repelling normal force (modeled using an
 exponential) is applied. The x-axis and y-axis of the contact plane together
@@ -206,9 +204,43 @@ where Δp₀ is the change in p₀ and Δt is the change in time since the last
 successful integration step. When ṗ₀ ≥ vSettle, Sliding = 1.0, and as
 ṗ₀ → 0.0, Sliding → 0.0.
 
------------------------
-CUSTOMIZABLE PARAMETERS
------------------------
+### Usage
+
+Constructing an ExponentialContactForce instance requires a Station in the model
+and a SimTK::Transform that defines the contact plane. Upon construction, the
+Station is connected to the ExponentialContactForce internally via a Socket.
+
+\code{.cpp}
+// Create a Station and add it as a subcomponent of its PhysicalFrame.
+const PhysicalFrame& frame = model->getComponent<PhysicalFrame>("/path/to/frame");  
+Station* station = new Station(frame, SimTK::Vec3(0.1, 0.2, 0.3));
+station->setName("myStation");
+frame.addComponent(station);
+
+// Define the contact plane transform.
+Rotation rotation(-SimTK::Pi/2.0, XAxis);
+Transform transform(rotation, SimTK::Vec3(0.));
+
+// Create the ExponentialContactForce instance and add it to the model.
+auto* ecf = new OpenSim::ExponentialContactForce(transform, *station);
+ecf->setName("myExponentialContactForce");
+model.addForce(ecf);
+\endcode
+
+The default contact parameters can be modified via a third, optional argument
+to the convienience constructor. See "Customizable Parameters" below for more 
+details on how to customize the parameters of an ExponentialContactForce.
+
+\code{.cpp}
+SimTK::ExponentialSpringParameters myParams;
+myParams.setNormalViscosity(0.25);
+auto* ecf = new OpenSim::ExponentialContactForce(transform, *station, myParams);
+ecf->setName("myExponentialContactForce");
+model.addForce(ecf);
+\endcode
+
+### Customizable Parameters
+
 Customizable Topology-stage parameters specifying the characteristics of the
 exponential spring are managed using SimTK::ExponentialSpringParameters.
 To customize any of the Topology-stage parameters on an ExponentialContactForce
@@ -216,7 +248,7 @@ instance, you should
 
 1) Create an ExponentialSpringParameters object. For example,
 
-        ExponentialSpringParameters myParams;
+        SimTK::ExponentialSpringParameters myParams;
 
 2) Use the available 'set' methods in ExponentialSpringParamters to change
 the parameters of that object. For example,
@@ -226,7 +258,7 @@ the parameters of that object. For example,
 3) Use ExponentialContactForce::setParameters() to alter the parameters of one
 (or many) ExponentialContactForce instances. For example,
 
-        ExponentialContactForce spr1, spr2;
+        SimTK::ExponentialContactForce spr1, spr2;
         spr1.setParameters(myParams);
         spr2.setParameters(myParams);
 
@@ -287,9 +319,7 @@ public:
         SimTK::ExponentialSpringParameters());
 
     /** Destructor. */
-    ~ExponentialContactForce() {
-        if (_spr != nullptr) delete _spr;
-    }
+    ~ExponentialContactForce();
 
     //-------------------------------------------------------------------------
     // Utility
