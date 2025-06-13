@@ -9,7 +9,7 @@
  *                                                                            *
  * Copyright (c) 2024-2025 Stanford University and the Authors                *
  * Author(s):  F. C. Anderson                                                 *
- * Contributor(s): Nick Bianco                                                *
+ * Contributor(s): Nicholas Bianco                                            *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -140,22 +140,25 @@ ExponentialContactForce() {
 
 ExponentialContactForce::
 ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
-    const std::string& bodyName, const SimTK::Vec3& station,
-    SimTK::ExponentialSpringParameters params)
+    const Station& station, SimTK::ExponentialSpringParameters params)
 {
     setNull();
     constructProperties();
-    setContactPlaneTransform(contactPlaneXform);
-    setBodyName(bodyName);
-    setBodyStation(station);
+    set_contact_plane_transform(contactPlaneXform);
+    connectSocket_station(station);
     setParameters(params);
+}
+
+ExponentialContactForce::
+~ExponentialContactForce() {
+    if (_spr != nullptr) delete _spr;
 }
 
 void
 ExponentialContactForce::
 setNull() {
     setAuthors("F. C. Anderson");
-    _spr = NULL;
+    _spr = nullptr;
 }
 
 void
@@ -165,8 +168,6 @@ constructProperties() {
     SimTK::Vec3 origin(0.0);
     Parameters params;
     constructProperty_contact_plane_transform(X_GP);
-    constructProperty_body_name("");
-    constructProperty_body_station(origin);
     constructProperty_contact_parameters(params);
 }
 
@@ -179,16 +180,14 @@ updateFromXMLNode(SimTK::Xml::Element& node, int versionNumber) {
 void
 ExponentialContactForce::
 extendConnectToModel(OpenSim::Model& model) {
-    // Allow based class to connect first
+    // Allow base class to connect first
     Super::extendConnectToModel(model);
 
-    // Find the OpenSim::Body
-    const string& bodyName = getBodyName();
-    if (getModel().hasComponent(bodyName))
-        _body = &(getModel().getComponent<PhysicalFrame>(bodyName));
-    else
-        _body = &(getModel().getComponent<PhysicalFrame>(
-                "./bodyset/" + bodyName));
+    // The station should not be connected to Ground.
+    const PhysicalFrame& frame =
+            getConnectee<Station>("station").getParentFrame();
+    OPENSIM_THROW_IF(&frame == &model.getGround(), Exception,
+        "The station must be connected to a PhysicalFrame that is not Ground.")
 }
 
 // This method is where the actual underlying contact force subsystem
@@ -203,14 +202,16 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
     // Construct the SimTK::ExponentialSpringForce object
     SimTK::GeneralForceSubsystem& forces = _model->updForceSubsystem();
     const SimTK::Transform& XContactPlane = get_contact_plane_transform();
-    const SimTK::Vec3& station = get_body_station();
+    const Station& station = getConnectee<Station>("station");
+    const PhysicalFrame& frame = station.getParentFrame();
+    const Vec3& location = station.get_location();
     SimTK::ExponentialSpringForce* spr =
         new SimTK::ExponentialSpringForce(forces, XContactPlane,
-            _body->getMobilizedBody(), station, getParameters());
+            frame.getMobilizedBody(), location, getParameters());
 
     // Get the subsystem index so we can access the SimTK::Force later.
     ExponentialContactForce* mutableThis =
-        const_cast<ExponentialContactForce *>(this);
+        const_cast<ExponentialContactForce*>(this);
     mutableThis->_spr = spr;
     mutableThis->_index = spr->getForceIndex();
 
@@ -294,25 +295,11 @@ resetAnchorPoint(SimTK::State& state) const {
     _spr->resetAnchorPoint(state);
 }
 
-// There might be a more computationally efficient way to do reset the anchor
-// points of all ExponentialContactForce instances in a ForceSet. Right now,
-// this method loops through all instances in the force set and does a dynamic
-// cast. The computational cost shouldn't be an issue because this method is
-// usually only called once at the beginning of a simulation.
 void
 ExponentialContactForce::
-resetAnchorPoints(OpenSim::ForceSet& fSet, SimTK::State& state) {
-    int i;
-    int n = fSet.getSize();
-    for (i = 0; i < n; ++i) {
-        try {
-            ExponentialContactForce& ec =
-                    dynamic_cast<ExponentialContactForce&>(fSet.get(i));
-            ec.resetAnchorPoint(state);
-        } catch (const std::bad_cast&) {
-            // Nothing should happen here. Execution is just skipping any
-            // OpenSim::Force that is not an ExponentialContactForce.
-        }
+resetAnchorPoints(OpenSim::Model& model, SimTK::State& state) {
+    for (auto& ec : model.updComponentList<ExponentialContactForce>()) {
+        ec.resetAnchorPoint(state);
     }
 }
 
@@ -326,7 +313,7 @@ setParameters(const SimTK::ExponentialSpringParameters& params) {
     p.setSimTKParameters(params);
     // Push the new parameters to the SimTK::ExponentialSpringForce instance.
     // The following call will invalidate the System at Stage::Topology.
-    if (_spr != NULL) _spr->setParameters(params);
+    if (_spr != nullptr) _spr->setParameters(params);
 }
 
 const SimTK::ExponentialSpringParameters&
@@ -451,7 +438,8 @@ ExponentialContactForce::
 getRecordLabels() const {
     OpenSim::Array<std::string> labels("");
     string name = getName();  // Name of this contact instance.
-    std::string frameName = getBodyName();
+    std::string frameName =
+            getConnectee<Station>("station").getParentFrame().getName();
     std::string groundName = getModel().getGround().getName();
 
     // Record format consistent with HuntCrossleyForce.
@@ -491,7 +479,8 @@ getRecordValues(const SimTK::State& state) const  {
     // Body
     SimTK::Vec3 force;
     SimTK::Vec3 torque;
-    const auto& bodyIndex = _body->getMobilizedBodyIndex();
+    const auto& bodyIndex = getConnectee<Station>("station").getParentFrame()
+            .getMobilizedBodyIndex();
     SimTK::SpatialVec& bodyForce = bForces(bodyIndex);
     force = bodyForce[1];
     double fy = force[1];
