@@ -356,7 +356,7 @@ public:
     Stage::Toplogy and, thus, require the SimTK::System to be re-realized
     before simulation or analysis can be resumed. */
     void setParameters(const SimTK::ExponentialSpringParameters& params);
-    /** Get the customizable Topology-stage spring parameters. Use the copy
+    /** Get the customizable topology-stage spring parameters. Use the copy
     constructor or the assignment operator on the returned reference to create
     a parameters object that can be modified. */
     const SimTK::ExponentialSpringParameters& getParameters() const;

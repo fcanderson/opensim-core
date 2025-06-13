@@ -184,7 +184,7 @@ extendConnectToModel(OpenSim::Model& model) {
     Super::extendConnectToModel(model);
 
     // The station should not be connected to Ground.
-    const PhysicalFrame& frame = 
+    const PhysicalFrame& frame =
             getConnectee<Station>("station").getParentFrame();
     OPENSIM_THROW_IF(&frame == &model.getGround(), Exception,
         "The station must be connected to a PhysicalFrame that is not Ground.")
@@ -438,7 +438,7 @@ ExponentialContactForce::
 getRecordLabels() const {
     OpenSim::Array<std::string> labels("");
     string name = getName();  // Name of this contact instance.
-    std::string frameName = 
+    std::string frameName =
             getConnectee<Station>("station").getParentFrame().getName();
     std::string groundName = getModel().getGround().getName();
 

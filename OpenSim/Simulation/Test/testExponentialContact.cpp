@@ -116,24 +116,14 @@ public:
         */
     }
 
-    // Model Creation
+    // Utility
     void buildModel();
     OpenSim::Body* addBlock(const std::string& suffix);
     void addExponentialContact(OpenSim::Body* body);
-
-    // Test stuff not covered elsewhere.
-    void test();
-    void checkParametersAndPropertiesEqual(
-        const ExponentialContactForce& spr) const;
-    void testModelSerialization();
-    void printDiscreteVariableAbstractValue(const string& pathName,
-        const AbstractValue& value) const;
-    void testDiscreteVariables(State& state, const ForceSet& fSet);
-
-    // Simulation
     void setInitialConditions(SimTK::State& state,
         const SimTK::MobilizedBody& body, double dz);
-    void simulate();
+    void printDiscreteVariableAbstractValue(const string& pathName,
+        const AbstractValue& value) const;
 
     //-------------------------------------------------------------------------
     // Member variables
@@ -323,51 +313,6 @@ setInitialConditions(SimTK::State& state, const SimTK::MobilizedBody& body,
     default:
         cout << "Unrecognized set of initial conditions!" << endl;
     }
-}
-
-void
-ExponentialContactTester::
-checkParametersAndPropertiesEqual(const ExponentialContactForce& spr) const {
-    // Get the OpenSim properties
-    const ExponentialContactForce::Parameters& a =
-        spr.getParameters();
-    const SimTK::ExponentialSpringParameters& b = spr.getParameters();
-
-    const SimTK::Vec3& vecA = a.get_exponential_shape_parameters();
-    SimTK::Vec3 vecB;
-    b.getShapeParameters(vecB[0], vecB[1], vecB[2]);
-    CHECK(vecA[0] == vecB[0]);
-    CHECK(vecA[1] == vecB[1]);
-    CHECK(vecA[2] == vecB[2]);
-
-    double valA, valB;
-    valA = a.get_normal_viscosity();
-    valB = b.getNormalViscosity();
-    CHECK(valA == valB);
-
-    valA = a.get_max_normal_force();
-    valB = b.getMaxNormalForce();
-    CHECK(valA == valB);
-
-    valA = a.get_friction_elasticity();
-    valB = b.getFrictionElasticity();
-    CHECK(valA == valB);
-
-    valA = a.get_friction_viscosity();
-    valB = b.getFrictionViscosity();
-    CHECK(valA == valB);
-
-    valA = a.get_settle_velocity();
-    valB = b.getSettleVelocity();
-    CHECK(valA == valB);
-
-    valA = a.get_initial_mu_static();
-    valB = b.getInitialMuStatic();
-    CHECK(valA == valB);
-
-    valA = a.get_initial_mu_kinetic();
-    valB = b.getInitialMuKinetic();
-    CHECK(valA == valB);
 }
 
 void
@@ -575,7 +520,7 @@ TEST_CASE("Discrete State Accessors")
 
     // Check current properties/parameters of all springs are equal.
     for (int i = 0; i < tester.n; i++) {
-        tester.checkParametersAndPropertiesEqual(*tester.sprEC[i]);
+       CHECK_NOTHROW( tester.sprEC[i]->assertPropertiesAndParametersEqual() );
     }
 
     // Pick a contact instance to manipulate.
@@ -635,11 +580,11 @@ TEST_CASE("Discrete State Accessors")
     CHECK(vecf[2] == veci[2]);
 }
 
-// Test that the contact plane property of an ExponentialContactForce instance 
+// Test that the contact plane property of an ExponentialContactForce instance
 // can be set and retrieved properly. This property, along with the properties
-// encapsulated in the ExponentialContactForce::Parameters class (see below), 
-// are is needed to construct an ExponentialContactForce instance. The 
-// ExponentialContactForce::Parameters are tested below in the test case 
+// encapsulated in the ExponentialContactForce::Parameters class (see below),
+// are is needed to construct an ExponentialContactForce instance. The
+// ExponentialContactForce::Parameters are tested below in the test case
 // "Spring Parameters".
 TEST_CASE("Contact Plane Transform")
 {
@@ -672,7 +617,7 @@ TEST_CASE("Spring Parameters")
 
     // Check current properties/parameters of all springs are equal.
     for (int i = 0; i < tester.n; i++) {
-        tester.checkParametersAndPropertiesEqual(*tester.sprEC[i]);
+        CHECK_NOTHROW( tester.sprEC[i]->assertPropertiesAndParametersEqual() );
     }
 
     // Pick a contact instance to manipulate.
@@ -700,7 +645,7 @@ TEST_CASE("Spring Parameters")
     CHECK(df[1] == di[1]);
     CHECK(df[2] == di[2]);
     spr.setParameters(pi);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     // d[1]
     pf.setShapeParameters(di[0], di[1] + delta, di[2]);
     pf.getShapeParameters(df[0], df[1], df[2]);
@@ -708,7 +653,7 @@ TEST_CASE("Spring Parameters")
     CHECK(df[1] == di[1] + delta);
     CHECK(df[2] == di[2]);
     spr.setParameters(pi);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     // d[2]
     pf.setShapeParameters(di[0], di[1], di[2] + delta);
     pf.getShapeParameters(df[0], df[1], df[2]);
@@ -716,7 +661,7 @@ TEST_CASE("Spring Parameters")
     CHECK(df[1] == di[1]);
     CHECK(df[2] == di[2] + delta);
     spr.setParameters(pi);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     // all at once
     pf.setShapeParameters(di[0] + delta, di[1] + delta, di[2] + delta);
     pf.getShapeParameters(df[0], df[1], df[2]);
@@ -724,21 +669,21 @@ TEST_CASE("Spring Parameters")
     CHECK(df[1] == di[1] + delta);
     CHECK(df[2] == di[2] + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Normal Viscosity
     double vali, valf;
     vali = pi.getNormalViscosity();
     pf.setNormalViscosity(vali + delta);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     valf = pf.getNormalViscosity();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Max Normal Force
     vali = pi.getMaxNormalForce();
@@ -746,9 +691,9 @@ TEST_CASE("Spring Parameters")
     valf = pf.getMaxNormalForce();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Settle Velocity
     vali = pi.getSettleVelocity();
@@ -756,9 +701,9 @@ TEST_CASE("Spring Parameters")
     valf = pf.getSettleVelocity();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Friction Elasticity
     vali = pi.getFrictionElasticity();
@@ -766,18 +711,18 @@ TEST_CASE("Spring Parameters")
     valf = pf.getFrictionElasticity();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Friction Viscosity
     vali = pi.getFrictionViscosity();
     pf.setFrictionViscosity(vali + delta);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Settle Velocity
     vali = pi.getSettleVelocity();
@@ -785,9 +730,9 @@ TEST_CASE("Spring Parameters")
     valf = pf.getSettleVelocity();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Initial Static Coefficient of Friction
     vali = pi.getInitialMuStatic();
@@ -795,9 +740,9 @@ TEST_CASE("Spring Parameters")
     valf = pf.getInitialMuStatic();
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Initial Kinetic Coefficient of Friction
     vali = pi.getInitialMuKinetic();
@@ -805,9 +750,9 @@ TEST_CASE("Spring Parameters")
     valf = pf.getInitialMuKinetic();
     CHECK(valf == vali - delta);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Make a change to mus that should also change muk
     double musi = pi.getInitialMuStatic();
@@ -818,9 +763,9 @@ TEST_CASE("Spring Parameters")
     CHECK(musf == muki - delta);
     CHECK(mukf == musf);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Make a change to musk that should also change mus
     musi = pi.getInitialMuStatic();
@@ -831,9 +776,9 @@ TEST_CASE("Spring Parameters")
     CHECK(mukf == musi + delta);
     CHECK(musf == mukf);
     spr.setParameters(pf);
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pi); // now back to original
-    tester.checkParametersAndPropertiesEqual(spr);
+    CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 }
 
 
