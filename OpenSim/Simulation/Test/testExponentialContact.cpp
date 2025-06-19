@@ -177,9 +177,6 @@ buildModel()
     statesReporter->setName("states_reporter");
     statesReporter->set_report_time_interval(0.1);
     model->addComponent(statesReporter);
-
-    // Build the System
-    model->buildSystem();
 }
 
 OpenSim::Body*
@@ -345,6 +342,7 @@ TEST_CASE("Simulation")
     // Create the tester, build the tester model, and initialize the state.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
+    CHECK_NOTHROW(tester.model->buildSystem());
     SimTK::State& state = tester.model->initializeState();
 
 
@@ -412,6 +410,7 @@ TEST_CASE("Model Serialization")
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
+    CHECK_NOTHROW(tester.model->buildSystem());
 
     // Serialize the model with default properties and spring parameters.
     std::string fileName = "BouncingBlock_ExponentialContact_Default.osim";
@@ -511,6 +510,27 @@ TEST_CASE("Model Serialization")
 
 }
 
+// Test copy construction, move construction, and the copy assignment
+// operator before and after the SimTK System has been built.
+//
+// Before the SimTK::System is built, none of the ExponentialContactForce
+// instances wraps an instatiated SimTK::ExponentialSpringForce. That is,
+// ExponentialContactForce::_spr = nullptr. In this case, it makes sense to
+// alter the contact_plane_transform, body station, and contact parameters.
+//
+// After the SimTK::System is built, each ExponentialContactForce instance
+// wraps an instantiated ExponentialContactForce. That is,
+// ExponentialContactForce::_spr != nullptr. In this case, neither the
+// contact_plane_transform nor body station can be altered, but the
+// contact_parameters CAN be still be altered.
+//
+// Copy construction, copy assignment, and move construction should enforce
+// this logic.
+TEST_CASE("Construction")
+{
+
+}
+
 
 // Test that the discrete states of an ExponentialContactForce instance can be
 // set and retrieved properly.
@@ -519,6 +539,7 @@ TEST_CASE("Discrete State Accessors")
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
+    CHECK_NOTHROW(tester.model->buildSystem());
 
     // Realize the model and get the state.
     SimTK::State& state = tester.model->initSystem();
@@ -597,6 +618,7 @@ TEST_CASE("Contact Plane Transform")
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
+    CHECK_NOTHROW(tester.model->buildSystem());
 
     // Default Contact Plane Transform
     Real angle = convertDegreesToRadians(90.0);
@@ -621,6 +643,7 @@ TEST_CASE("Spring Parameters")
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
+    CHECK_NOTHROW(tester.model->buildSystem());
 
     // Check current properties/parameters of all springs are equal.
     for (int i = 0; i < tester.n; i++) {
