@@ -347,6 +347,7 @@ TEST_CASE("Simulation")
     CHECK_NOTHROW(tester.buildModel());
     SimTK::State& state = tester.model->initializeState();
 
+
     // Set initial conditions
     double dz = 1.0;
     tester.whichInit = ExponentialContactTester::SpinSlide;
@@ -387,8 +388,7 @@ TEST_CASE("Simulation")
     StatesDocument statesDocSe = statesTraj.exportToStatesDocument(
         *tester.model, "sliding simulation", precision);
     SimTK::String filename01 = "BouncingBlock_ExponentialContact_1.ostates";
-    CHECK_NOTHROW(
-        statesDocSe.serialize(filename01));
+    CHECK_NOTHROW( statesDocSe.serialize(filename01) );
 
     // Deserialize the states
     StatesDocument statesDocDe(filename01);
@@ -398,6 +398,11 @@ TEST_CASE("Simulation")
 
     // Check that the number of State objects in the trajectories matches
     CHECK(statesTraj.getSize() == statesTrajDeserialized.size());
+
+    // Copy the model.
+    Model modelCopy(*tester.model);
+    SimTK::String modelFileName = "BouncingBlock_ExponentialContact_Copy.osim";
+    CHECK_NOTHROW(modelCopy.print(modelFileName));
 }
 
 
@@ -580,6 +585,7 @@ TEST_CASE("Discrete State Accessors")
     CHECK(vecf[2] == veci[2]);
 }
 
+
 // Test that the contact plane property of an ExponentialContactForce instance
 // can be set and retrieved properly. This property, along with the properties
 // encapsulated in the ExponentialContactForce::Parameters class (see below),
@@ -603,6 +609,7 @@ TEST_CASE("Contact Plane Transform")
     CHECK(xformf.p() == floorXForm.p());
     CHECK(xformf.R() == floorXForm.R());
 }
+
 
 // Test that the underlying spring parameters of an ExponentialContactForce instance
 // can be set and retrieved properly. In addition, verify that the
@@ -780,6 +787,7 @@ TEST_CASE("Spring Parameters")
     spr.setParameters(pi); // now back to original
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 }
+
 
 
 /* This is not currently used in the test suite, but it is a good example of

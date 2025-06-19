@@ -212,7 +212,7 @@ Station is connected to the ExponentialContactForce internally via a Socket.
 
 \code{.cpp}
 // Create a Station and add it as a subcomponent of its PhysicalFrame.
-const PhysicalFrame& frame = model->getComponent<PhysicalFrame>("/path/to/frame");  
+const PhysicalFrame& frame = model->getComponent<PhysicalFrame>("/path/to/frame");
 Station* station = new Station(frame, SimTK::Vec3(0.1, 0.2, 0.3));
 station->setName("myStation");
 frame.addComponent(station);
@@ -228,7 +228,7 @@ model.addForce(ecf);
 \endcode
 
 The default contact parameters can be modified via a third, optional argument
-to the convienience constructor. See "Customizable Parameters" below for more 
+to the convienience constructor. See "Customizable Parameters" below for more
 details on how to customize the parameters of an ExponentialContactForce.
 
 \code{.cpp}
@@ -299,8 +299,53 @@ public:
     //-------------------------------------------------------------------------
     // Construction
     //-------------------------------------------------------------------------
-    /** Default constructor. */
+    /** Default constructor. Construct an instance with default values for
+    the contact plane transform, body station, and contact parameters. Note
+    that the underlying SimTK::ExponentialSpringForce is not constructed until
+    the OpenSim Model is built. */
     ExponentialContactForce();
+
+    /** Copy constructor. This copy is shallow. The OpenSim Properties and
+    socket connections of the constructed instance are made equal to the
+    properties of the source instance; however, the value of the pointer to
+    the underlying SimTK::ExponentialSpringForce in the constructed instance
+    is left as null. This choice avoids double deletion. A non-null value is
+    assigned only when the OpenSim Model is built and the underlying
+    SimTK::ExponentialSpringForce instance is added to the SimTK::System.
+    @param source Const reference to the source object to be copied. */
+    ExponentialContactForce(const ExponentialContactForce& source);
+
+    /** Copy assignment operator. Only the values of properties that can
+    be pushed to an underlying SimTK::ExponentialSpringForce instance are
+    altered during this operation. More specifically, all class member
+    variables are altered except for the following: 1) the contact plane
+    transform, 2) the body station and related socket connections, and
+    3) the value of the pointer to the underlying
+    SimTK::ExponentialSpringForce instance. Regarding item #3 in particular,
+    if the pointer value is null, it is left as null, and if the
+    pointer value is non-null, it is left unchanged. This choice makes it
+    possible to match the properties of this instance to those of a source
+    instance while protecting against memory leaks and double deletion of an
+    underlying SimTK::ExponentialSpringForce instance. Using this operator
+    will reset the stage of the SimTK::System to SimTK::Stage::Topology if the
+    underlying SimTK::ExponentialSpringForce has been instantiated.
+    @param source Const reference to the source to which to assign. */
+    //ExponentialContactForce&
+    //    operator=(const ExponentialContactForce& source);
+
+    /** Move constructor. Use this constructor to transfer deep ownership
+    of the underlying Simbody contact force from the source to a new instance
+    of ExponentialContactForce. Apt scenarios in which this move constructor
+    should be used include returning an ExponentialContactForce from a method
+    and storing ExponentialContactForce objects in STL-like containters
+    (e.g., std::vector<>).
+
+    The OpenSim Properties of the constructed instance are made equal to the
+    properties of the source instance. The value of the underlying Simbody
+    force pointer (SimTK::ExponentialSpringForce) is moved to the constructed
+    instance, and the pointer in the source instance is set to `nullptr`.
+    @param source rvalue reference to the source object to be copied. */
+    //ExponentialContactForce(ExponentialContactForce&& source) noexcept;
 
     /** Construct an ExponentialContactForce instance.
     @param X_GP Transform specifying the location and orientation of the
