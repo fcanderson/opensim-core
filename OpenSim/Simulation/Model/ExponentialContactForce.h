@@ -338,6 +338,7 @@ public:
     properties of the source instance. The value of the underlying Simbody
     force pointer (SimTK::ExponentialSpringForce) is moved to the constructed
     instance, and the pointer in the source instance is set to `nullptr`.
+
     @param source rvalue reference to the source object to be copied. */
     ExponentialContactForce(ExponentialContactForce&& source) noexcept;
 

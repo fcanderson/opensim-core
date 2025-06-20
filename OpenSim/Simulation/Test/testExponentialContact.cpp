@@ -891,7 +891,7 @@ TEST_CASE("Construction")
     CHECK(frc2Copy->getParameters().getFrictionElasticity() == elasticity2);
     CHECK(frc2Copy->getContactPlaneTransform() == floorXForm2);
 
-    // Check that no segfaults occur when deleting the original and a copy.
+    // Check that no segfaults occur when deleting the original and its copy.
     frcDefault = new ExponentialContactForce();
     CHECK(frcDefault->getParameters().getFrictionElasticity() == elasticity0);
     CHECK(frcDefault->getContactPlaneTransform() != floorXForm1);
@@ -901,6 +901,24 @@ TEST_CASE("Construction")
     CHECK(frcDefaultCopy->getContactPlaneTransform() != floorXForm1);
     delete frcDefault;
     delete frcDefaultCopy;
+
+    // Move Construction
+    params.setFrictionElasticity(elasticity1);
+    ExponentialContactForce* frc3 =
+        new ExponentialContactForce(floorXForm1, *station1, params);
+    frc3->setName("ExpFrc3");
+    ExponentialContactForce* frc3Move =
+        new ExponentialContactForce(std::move(*frc3));
+    CHECK(frc3Move->getParameters().getFrictionElasticity() == elasticity1);
+    CHECK(frc3Move->getContactPlaneTransform() == floorXForm1);
+    model->addForce(frc3);
+    model->buildSystem();
+    ExponentialContactForce* frc3MoveAfterBuild =
+        new ExponentialContactForce(std::move(*frc3));
+    CHECK(frc3MoveAfterBuild->getParameters().getFrictionElasticity() == elasticity1);
+    CHECK(frc3MoveAfterBuild->getContactPlaneTransform() == floorXForm1);
+    delete frc3Move;
+    delete frc3MoveAfterBuild;
 
     // Clean up
     // frc1 and frc2 are already deleted by the model destructor
