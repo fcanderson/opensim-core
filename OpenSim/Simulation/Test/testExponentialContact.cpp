@@ -98,7 +98,7 @@ public:
 
     // Destructor
     ~ExponentialContactTester() {
-        if (model) {
+        if (model != nullptr) {
             //model->disownAllComponents();  // See note just below.
             delete model;
         }
@@ -510,28 +510,6 @@ TEST_CASE("Model Serialization")
 
 }
 
-// Test copy construction, move construction, and the copy assignment
-// operator before and after the SimTK System has been built.
-//
-// Before the SimTK::System is built, none of the ExponentialContactForce
-// instances wraps an instatiated SimTK::ExponentialSpringForce. That is,
-// ExponentialContactForce::_spr = nullptr. In this case, it makes sense to
-// alter the contact_plane_transform, body station, and contact parameters.
-//
-// After the SimTK::System is built, each ExponentialContactForce instance
-// wraps an instantiated ExponentialContactForce. That is,
-// ExponentialContactForce::_spr != nullptr. In this case, neither the
-// contact_plane_transform nor body station can be altered, but the
-// contact_parameters CAN be still be altered.
-//
-// Copy construction, copy assignment, and move construction should enforce
-// this logic.
-TEST_CASE("Construction")
-{
-
-}
-
-
 // Test that the discrete states of an ExponentialContactForce instance can be
 // set and retrieved properly.
 TEST_CASE("Discrete State Accessors")
@@ -811,6 +789,125 @@ TEST_CASE("Spring Parameters")
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 }
 
+// Test copy construction, the copy assignment operator, and move construction
+// before and after the SimTK System has been built.
+TEST_CASE("Construction")
+{
+    // Create the model
+    Model* model = new Model();
+    model->setGravity(Vec3(0, -9.8, 0));
+    model->setName("SimpleBlock");
+
+    // Add a body and joint
+    Ground& ground = model->updGround();
+    OpenSim::Body* block = new OpenSim::Body();
+    block->setName("block");
+    block->set_mass(10.0);
+    block->set_mass_center(Vec3(0));
+    block->setInertia(Inertia(1.0));
+    FreeJoint* free = new
+        FreeJoint("free", ground, Vec3(0), Vec3(0), *block, Vec3(0), Vec3(0));
+    model->addBody(block);
+    model->addJoint(free);
+
+    // Add ExponentialContactForce instances
+    Vec3 floorOrigin(0., -0.004, 0.);
+    SimTK::ExponentialSpringParameters params;
+    Real elasticity0 = params.getFrictionElasticity();
+    // ---- params1
+    Real elasticity1 = elasticity0 + 0.1;
+    params.setFrictionElasticity(elasticity1);
+    // ---- transform1
+    Real angle1 = convertDegreesToRadians(85.0);
+    Rotation floorRot1(-angle1, XAxis);
+    Transform floorXForm1(floorRot1, floorOrigin);
+    // ---- station1
+    Vec3 v1(0.1, 0.1, 0.1);
+    Station* station1 = new Station(*block, v1);
+    station1->setName("corner_1");
+    block->addComponent(station1);
+    // ----frc1
+    ExponentialContactForce* frc1 = new
+        ExponentialContactForce(floorXForm1, *station1, params);
+    frc1->setName("ExpFrc1");
+    model->addForce(frc1);
+    // ---- params2
+    Real elasticity2 = elasticity0 + 0.2;
+    params.setFrictionElasticity(elasticity2);
+    // ---- transform2
+    Real angle2 = convertDegreesToRadians(95.0);
+    Rotation floorRot2(-angle2, XAxis);
+    Transform floorXForm2(floorRot2, floorOrigin);
+    // ---- station2
+    Vec3 v2(-0.1, -0.1, -0.1);
+    Station* station2 = new Station(*block, v2);
+    station2->setName("corner_2");
+    block->addComponent(station2);
+    // ---- frc2
+    ExponentialContactForce* frc2 = new
+        ExponentialContactForce(floorXForm2, *station2, params);
+    frc2->setName("ExpFrc2");
+    model->addForce(frc2);
+
+    // All properties, except for the station, should be copied/assigned
+    // because none of the contact forces wrap an instantiated
+    // ExponentialSpringForce.
+    ExponentialContactForce* frc1Copy = new ExponentialContactForce(*frc1);
+    frc1Copy->setName("ExpFrc1Copy");
+    CHECK(frc1Copy->getParameters().getFrictionElasticity() == elasticity1);
+    CHECK(frc1Copy->getContactPlaneTransform() == floorXForm1);
+
+    // Copy Assignment
+    // All properties and the station should be assigned because frcDefault
+    // doesn't wrap an instantiated SimTK::ExponentialSpringForce.
+    ExponentialContactForce* frcDefault = new ExponentialContactForce();
+    CHECK(frcDefault->getParameters().getFrictionElasticity() == elasticity0);
+    CHECK(frcDefault->getContactPlaneTransform() != floorXForm1);
+    *frcDefault = *frc1;
+    CHECK(frcDefault->getParameters().getFrictionElasticity() == elasticity1);
+    CHECK(frcDefault->getContactPlaneTransform() == floorXForm1);
+    delete frcDefault;
+
+    // Copy assignment when the springs have been added to the model
+    *frc1 = *frc2;
+    CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
+    CHECK(frc1->getContactPlaneTransform() == floorXForm2);
+
+    // Build the system
+    model->buildSystem();
+
+    // Perform similar checks again.
+    // This time, the contact plane transforms should not change because
+    // the change cannot be propagated to the underlying
+    // SimTK::ExponentialSpringForce.
+    *frc1 = *frc1Copy;
+    CHECK(frc1->getParameters().getFrictionElasticity() == elasticity1);
+    CHECK(frc1->getContactPlaneTransform() == floorXForm2);
+    *frc1 = *frc2;
+    CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
+    CHECK(frc1->getContactPlaneTransform() == floorXForm2);
+    ExponentialContactForce* frc2Copy = new ExponentialContactForce(*frc2);
+    frc2Copy->setName("ExpFrc2Copy");
+    CHECK(frc2Copy->getParameters().getFrictionElasticity() == elasticity2);
+    CHECK(frc2Copy->getContactPlaneTransform() == floorXForm2);
+
+    // Check that no segfaults occur when deleting the original and a copy.
+    frcDefault = new ExponentialContactForce();
+    CHECK(frcDefault->getParameters().getFrictionElasticity() == elasticity0);
+    CHECK(frcDefault->getContactPlaneTransform() != floorXForm1);
+    ExponentialContactForce* frcDefaultCopy =
+        new ExponentialContactForce(*frcDefault);
+    CHECK(frcDefaultCopy->getParameters().getFrictionElasticity() == elasticity0);
+    CHECK(frcDefaultCopy->getContactPlaneTransform() != floorXForm1);
+    delete frcDefault;
+    delete frcDefaultCopy;
+
+    // Clean up
+    // frc1 and frc2 are already deleted by the model destructor
+    delete frc1Copy;
+    delete frc2Copy;
+    delete model;
+}
 
 
 /* This is not currently used in the test suite, but it is a good example of

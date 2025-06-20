@@ -309,29 +309,23 @@ public:
     socket connections of the constructed instance are made equal to the
     properties of the source instance; however, the value of the pointer to
     the underlying SimTK::ExponentialSpringForce in the constructed instance
-    is left as null. This choice avoids double deletion. A non-null value is
-    assigned only when the OpenSim Model is built and the underlying
-    SimTK::ExponentialSpringForce instance is added to the SimTK::System.
+    is left as null. This policy avoids double deletion of the memory
+    block owned by the source instance.
     @param source Const reference to the source object to be copied. */
     ExponentialContactForce(const ExponentialContactForce& source);
 
-    /** Copy assignment operator. Only the values of properties that can
-    be pushed to an underlying SimTK::ExponentialSpringForce instance are
-    altered during this operation. More specifically, all class member
-    variables are altered except for the following: 1) the contact plane
-    transform, 2) the body station and related socket connections, and
-    3) the value of the pointer to the underlying
-    SimTK::ExponentialSpringForce instance. Regarding item #3 in particular,
-    if the pointer value is null, it is left as null, and if the
-    pointer value is non-null, it is left unchanged. This choice makes it
-    possible to match the properties of this instance to those of a source
-    instance while protecting against memory leaks and double deletion of an
-    underlying SimTK::ExponentialSpringForce instance. Using this operator
-    will reset the stage of the SimTK::System to SimTK::Stage::Topology if the
-    underlying SimTK::ExponentialSpringForce has been instantiated.
+    /** Copy assignment operator. This operator is shalow. In no case is the
+    value of the underlying SimTK::ExponentialSpringForce pointer in the
+    calling instance assigned to the value of the pointer in the source
+    instance. Also in no case is the body station or socket connection of the
+    calling instance altered. The contact plane transform of the calling
+    instance is assigned to the transform of the source instance only prior
+    to Model::buildSystem() being called. In all cases, however, the contact
+    properties (elasticity, viscosity, etc.) of the calling instance are
+    assigned to the properties of the source instance. Using this operator
+    will reset the stage of the SimTK::System to SimTK::Stage::Topology.
     @param source Const reference to the source to which to assign. */
-    //ExponentialContactForce&
-    //    operator=(const ExponentialContactForce& source);
+    ExponentialContactForce& operator=(const ExponentialContactForce& source);
 
     /** Move constructor. Use this constructor to transfer deep ownership
     of the underlying Simbody contact force from the source to a new instance
@@ -345,7 +339,7 @@ public:
     force pointer (SimTK::ExponentialSpringForce) is moved to the constructed
     instance, and the pointer in the source instance is set to `nullptr`.
     @param source rvalue reference to the source object to be copied. */
-    //ExponentialContactForce(ExponentialContactForce&& source) noexcept;
+    ExponentialContactForce(ExponentialContactForce&& source) noexcept;
 
     /** Construct an ExponentialContactForce instance.
     @param X_GP Transform specifying the location and orientation of the
