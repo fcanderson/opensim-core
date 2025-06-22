@@ -418,6 +418,9 @@ TEST_CASE("Model Serialization")
 
     // Deserialize the model
     Model modelCopy(fileName);
+    CHECK_NOTHROW(modelCopy.buildSystem());
+    std::string copyFileName = "BouncingBlock_ExponentialContact_Copy.osim";
+    modelCopy.print(copyFileName);
 
     // Check that the properties and spring parameters match the original.
     const ForceSet& fSet0 = tester.model->getForceSet();
@@ -480,6 +483,7 @@ TEST_CASE("Model Serialization")
 
     // Deserialize the model
     Model modelCopy2(fileName);
+    CHECK_NOTHROW(modelCopy2.buildSystem());
 
     // Check that the re-deserialized model has the correct spring parameters.
     const ForceSet& fSet2 = modelCopy2.getForceSet();
