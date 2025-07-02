@@ -26,6 +26,7 @@
 // INCLUDE
 #include "SimTKsimbody.h"
 #include "Force.h"
+#include "Model.h"
 #include "OpenSim/Common/Set.h"
 #include "OpenSim/Simulation/Model/ForceSet.h"
 
@@ -303,7 +304,7 @@ public:
 
     /** Destructor. */
     ~ExponentialContactForce() {
-        if (_spr != NULL) delete _spr;
+        //if (_spr != NULL) delete _spr;
     }
 
     //-------------------------------------------------------------------------
@@ -391,7 +392,7 @@ public:
     /** Get a pointer to the SimTK::Subsystem from which this
     ExponentialContactForce instance allocates its discrete states. */
     const SimTK::Subsystem* getSubsystem() const {
-        return &_spr->getForceSubsystem();
+        return &getSprRef().getForceSubsystem();
     }
 
     /** Get the name used for the discrete state representing the static
@@ -624,7 +625,21 @@ private:
     void setNull();
     void constructProperties();
     SimTK::ReferencePtr<const PhysicalFrame> _body;
-    SimTK::ExponentialSpringForce* _spr{NULL};
+    //SimTK::ExponentialSpringForce* _spr{NULL};
+
+    const SimTK::ExponentialSpringForce& getSprRef() const {
+        const auto& forceSubsys = getModel().getForceSubsystem();
+        const SimTK::Force& abstractForce = forceSubsys.getForce(_index);
+        const auto& spr = (const SimTK::ExponentialSpringForce&)(abstractForce);
+        return spr;
+    }
+
+    SimTK::ExponentialSpringForce& updSprRef() {
+        auto& forceSubsys = updModel().updForceSubsystem();
+        SimTK::Force& abstractForce = forceSubsys.updForce(_index);
+        auto& spr = (SimTK::ExponentialSpringForce&)(abstractForce);
+        return spr;
+    }
 
 }; // END of class ExponentialContactForce
 
@@ -722,6 +737,7 @@ private:
     void updateFromXMLNode(SimTK::Xml::Element& node,
         int versionNumber) override;
     SimTK::ExponentialSpringParameters _stkparams;
+
 };
 
 } // end of namespace OpenSim

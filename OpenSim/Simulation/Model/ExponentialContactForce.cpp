@@ -155,7 +155,6 @@ void
 ExponentialContactForce::
 setNull() {
     setAuthors("F. C. Anderson");
-    _spr = NULL;
 }
 
 void
@@ -204,15 +203,24 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
     SimTK::GeneralForceSubsystem& forces = _model->updForceSubsystem();
     const SimTK::Transform& XContactPlane = get_contact_plane_transform();
     const SimTK::Vec3& station = get_body_station();
-    SimTK::ExponentialSpringForce* spr =
-        new SimTK::ExponentialSpringForce(forces, XContactPlane,
-            _body->getMobilizedBody(), station, getParameters());
+    SimTK::ExponentialSpringParameters params =
+            get_contact_parameters().getSimTKParameters();
+    params.setFrictionElasticity(20000);
+    SimTK::ExponentialSpringForce spr(forces, XContactPlane,
+        _body->getMobilizedBody(), station, params);
 
     // Get the subsystem index so we can access the SimTK::Force later.
     ExponentialContactForce* mutableThis =
         const_cast<ExponentialContactForce *>(this);
-    mutableThis->_spr = spr;
-    mutableThis->_index = spr->getForceIndex();
+    //mutableThis->_spr = &spr;
+    mutableThis->_index = spr.getForceIndex();
+
+    // Is the force stored in the SimTK subsystem a pointer to
+    // ExponentialSpringForce or ExponentialSpringForceImpl?
+    //const SimTK::ExponentialSpringForce& sprForce = getExpSprForceRef();
+    //    static_cast<SimTK::ExponentialSpringForce&>(forces.updForce(_index));
+    Real kp = getSprRef().getParameters().getFrictionElasticity();
+    cout << "Friction spring stiffness = " << kp << " N/m." << endl;
 
     // Expose the discrete states of ExponentialSpringForce in OpenSim
     bool allocate = false;
@@ -269,19 +277,19 @@ extendRealizeTopology(SimTK::State& state) const {
     std::string name;
 
     name = getMuStaticDiscreteStateName();
-    dvIndex = _spr->getMuStaticStateIndex();
+    dvIndex = getSprRef().getMuStaticStateIndex();
     initializeDiscreteVariableIndexes(name, ssIndex, dvIndex);
 
     name = getMuKineticDiscreteStateName();
-    dvIndex = _spr->getMuKineticStateIndex();
+    dvIndex = getSprRef().getMuKineticStateIndex();
     initializeDiscreteVariableIndexes(name, ssIndex, dvIndex);
 
     name = getSlidingDiscreteStateName();
-    dvIndex = _spr->getSlidingStateIndex();
+    dvIndex = getSprRef().getSlidingStateIndex();
     initializeDiscreteVariableIndexes(name, ssIndex, dvIndex);
 
     name = getAnchorPointDiscreteStateName();
-    dvIndex = _spr->getAnchorPointStateIndex();
+    dvIndex = getSprRef().getAnchorPointStateIndex();
     initializeDiscreteVariableIndexes(name, ssIndex, dvIndex);
 }
 
@@ -291,7 +299,7 @@ extendRealizeTopology(SimTK::State& state) const {
 void
 ExponentialContactForce::
 resetAnchorPoint(SimTK::State& state) const {
-    _spr->resetAnchorPoint(state);
+    getSprRef().resetAnchorPoint(state);
 }
 
 // There might be a more computationally efficient way to do reset the anchor
@@ -326,7 +334,7 @@ setParameters(const SimTK::ExponentialSpringParameters& params) {
     p.setSimTKParameters(params);
     // Push the new parameters to the SimTK::ExponentialSpringForce instance.
     // The following call will invalidate the System at Stage::Topology.
-    if (_spr != NULL) _spr->setParameters(params);
+    if(_index.isValid()) updSprRef().setParameters(params);
 }
 
 const SimTK::ExponentialSpringParameters&
@@ -341,31 +349,31 @@ getParameters() const {
 void
 ExponentialContactForce::
 setMuStatic(SimTK::State& state, SimTK::Real mus) {
-    _spr->setMuStatic(state, mus);
+    updSprRef().setMuStatic(state, mus);
 }
 
 SimTK::Real
 ExponentialContactForce::
 getMuStatic(const SimTK::State& state) const {
-    return _spr->getMuStatic(state);
+    return getSprRef().getMuStatic(state);
 }
 
 void
 ExponentialContactForce::
 setMuKinetic(SimTK::State& state, SimTK::Real mus) {
-    _spr->setMuKinetic(state, mus);
+    updSprRef().setMuKinetic(state, mus);
 }
 
 SimTK::Real
 ExponentialContactForce::
 getMuKinetic(const SimTK::State& state) const {
-    return _spr->getMuKinetic(state);
+    return getSprRef().getMuKinetic(state);
 }
 
 SimTK::Real
 ExponentialContactForce::
 getSliding(const SimTK::State& state) const {
-    return _spr->getSliding(state);
+    return getSprRef().getSliding(state);
 }
 
 //-----------------------------------------------------------------------------
@@ -374,73 +382,73 @@ getSliding(const SimTK::State& state) const {
 Vec3
 ExponentialContactForce::
 getNormalForceElasticPart(const State& state, bool inGround) const {
-    return _spr->getNormalForceElasticPart(state, inGround);
+    return getSprRef().getNormalForceElasticPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getNormalForceDampingPart(const State& state, bool inGround) const {
-    return _spr->getNormalForceDampingPart(state, inGround);
+    return getSprRef().getNormalForceDampingPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getNormalForce(const State& state, bool inGround) const {
-    return _spr->getNormalForce(state, inGround);
+    return getSprRef().getNormalForce(state, inGround);
 }
 
 Real
 ExponentialContactForce::
 getMu(const State& state) const {
-    return _spr->getMu(state);
+    return getSprRef().getMu(state);
 }
 
 Real
 ExponentialContactForce::
 getFrictionForceLimit(const SimTK::State& state) const {
-    return _spr->getFrictionForceLimit(state);
+    return getSprRef().getFrictionForceLimit(state);
 }
 
 Vec3
 ExponentialContactForce::
 getFrictionForceElasticPart(const State& state, bool inGround) const {
-    return _spr->getFrictionForceElasticPart(state, inGround);
+    return getSprRef().getFrictionForceElasticPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getFrictionForceDampingPart(const State& state, bool inGround) const {
-    return _spr->getFrictionForceDampingPart(state, inGround);
+    return getSprRef().getFrictionForceDampingPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getFrictionForce(const State& state, bool inGround) const {
-    return _spr->getFrictionForce(state, inGround);
+    return getSprRef().getFrictionForce(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getForce(const State& state, bool inGround) const {
-    return _spr->getForce(state, inGround);
+    return getSprRef().getForce(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getStationPosition(const State& state, bool inGround) const {
-    return _spr->getStationPosition(state, inGround);
+    return getSprRef().getStationPosition(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getStationVelocity(const State& state, bool inGround) const {
-    return _spr->getStationVelocity(state, inGround);
+    return getSprRef().getStationVelocity(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getAnchorPointPosition(const State& state, bool inGround) const {
-    return _spr->getAnchorPointPosition(state, inGround);
+    return getSprRef().getAnchorPointPosition(state, inGround);
 }
 
 //-----------------------------------------------------------------------------
