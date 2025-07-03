@@ -628,6 +628,7 @@ private:
     //SimTK::ExponentialSpringForce* _spr{NULL};
 
     const SimTK::ExponentialSpringForce& getSprRef() const {
+        SimTK_ASSERT(_index.isValid(), "Invalid Force index.");
         const auto& forceSubsys = getModel().getForceSubsystem();
         const SimTK::Force& abstractForce = forceSubsys.getForce(_index);
         const auto& spr = (const SimTK::ExponentialSpringForce&)(abstractForce);
@@ -635,6 +636,7 @@ private:
     }
 
     SimTK::ExponentialSpringForce& updSprRef() {
+        SimTK_ASSERT(_index.isValid(), "Invalid Force index.");
         auto& forceSubsys = updModel().updForceSubsystem();
         SimTK::Force& abstractForce = forceSubsys.updForce(_index);
         auto& spr = (SimTK::ExponentialSpringForce&)(abstractForce);
