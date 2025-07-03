@@ -205,22 +205,13 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
     const SimTK::Vec3& station = get_body_station();
     SimTK::ExponentialSpringParameters params =
             get_contact_parameters().getSimTKParameters();
-    params.setFrictionElasticity(20000);
     SimTK::ExponentialSpringForce spr(forces, XContactPlane,
         _body->getMobilizedBody(), station, params);
 
     // Get the subsystem index so we can access the SimTK::Force later.
     ExponentialContactForce* mutableThis =
         const_cast<ExponentialContactForce *>(this);
-    //mutableThis->_spr = &spr;
     mutableThis->_index = spr.getForceIndex();
-
-    // Is the force stored in the SimTK subsystem a pointer to
-    // ExponentialSpringForce or ExponentialSpringForceImpl?
-    //const SimTK::ExponentialSpringForce& sprForce = getExpSprForceRef();
-    //    static_cast<SimTK::ExponentialSpringForce&>(forces.updForce(_index));
-    Real kp = getSprRef().getParameters().getFrictionElasticity();
-    cout << "Friction spring stiffness = " << kp << " N/m." << endl;
 
     // Expose the discrete states of ExponentialSpringForce in OpenSim
     bool allocate = false;
