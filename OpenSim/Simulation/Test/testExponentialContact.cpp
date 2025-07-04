@@ -20,6 +20,11 @@
 * See the License for the specific language governing permissions and        *
 * limitations under the License.                                             *
 * -------------------------------------------------------------------------- */
+
+#define _CRTDBG_MAP_ALLOC
+#include <cstdlib>
+#include <crtdbg.h>
+
 #include <iostream>
 #include <OpenSim/Common/IO.h>
 #include <OpenSim/Common/Exception.h>
@@ -391,6 +396,9 @@ printDiscreteVariableAbstractValue(const string& pathName,
 // recording states along the way and serializing the states upon completion.
 TEST_CASE("Simulaltion")
 {
+    cout << "Test Case: Simulation" << endl;
+    _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
     // Create the tester, build the tester model, and initialize the state.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
@@ -454,6 +462,9 @@ TEST_CASE("Simulaltion")
 // Test that the model can be serialized and deserialized.
 TEST_CASE("Model Serialization")
 {
+    cout << "Test Case: Model Serialization" << endl;
+    _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
@@ -557,12 +568,15 @@ TEST_CASE("Model Serialization")
 // set and retrieved properly.
 TEST_CASE("Discrete State Accessors")
 {
+    cout << "Test Case: Discrete State Accessors" << endl;
+    _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
 
     // Realize the model and get the state.
-    SimTK::State& state = tester.model->initSystem();
+    SimTK::State& state = tester.model->initializeState();
 
     // Check current properties/parameters of all springs are equal.
     for (int i = 0; i < tester.n; i++) {
@@ -636,6 +650,8 @@ TEST_CASE("Discrete State Accessors")
 // tested below in the test case "Spring Parameters".
 TEST_CASE("Property Accessors")
 {
+    cout << "Test Case: Property Accessors" << endl;
+
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
@@ -676,6 +692,8 @@ TEST_CASE("Property Accessors")
 // one another.
 TEST_CASE("Spring Parameters")
 {
+    cout << "Test Case: Spring Parameters" << endl;
+
     // Create the tester and build the tester model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
@@ -845,6 +863,40 @@ TEST_CASE("Spring Parameters")
     spr.setParameters(pi); // now back to original
     tester.checkParametersAndPropertiesEqual(spr);
 }
+
+
+TEST_CASE("Memory")
+{
+    cout << "Memory Leak Detection..." << endl;
+    //_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+    _CrtMemState memoryState = {0};
+    _CrtMemCheckpoint(&memoryState);
+
+    ExponentialContactTester tester;
+    tester.buildModel();
+
+    // Simple dynamic allocation. Can use to create an intentional memory leak
+    // and make sure that the CRT memory leak detection is working.
+    char* leak = new char[100];
+    delete[] leak;
+
+    //_CrtMemDumpAllObjectsSince(&memoryState);
+}
+
+void testMemoryTwo()
+{
+    cout << "Memory Leak Detection..." << endl;
+    _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+    _CrtMemState memoryState = {0};
+    _CrtMemCheckpoint(&memoryState);
+
+   // Insert code that could cause memory leaks here.
+
+
+    //_CrtMemDumpAllObjectsSince(&memoryState);
+    //_CrtDumpMemoryLeaks();
+}
+
 
 
 /* This is not currently used in the test suite, but it is a good example of
