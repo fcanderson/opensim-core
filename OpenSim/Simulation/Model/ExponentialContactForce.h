@@ -312,7 +312,7 @@ public:
     is left as null. This policy avoids double deletion of the memory
     block owned by the source instance.
     @param source Const reference to the source object to be copied. */
-    ExponentialContactForce(const ExponentialContactForce& source);
+    //ExponentialContactForce(const ExponentialContactForce& source);
 
     /** Copy assignment operator. This operator is shalow. In no case is the
     value of the underlying SimTK::ExponentialSpringForce pointer in the
@@ -325,7 +325,7 @@ public:
     assigned to the properties of the source instance. Using this operator
     will reset the stage of the SimTK::System to SimTK::Stage::Topology.
     @param source Const reference to the source to which to assign. */
-    ExponentialContactForce& operator=(const ExponentialContactForce& source);
+    //ExponentialContactForce& operator=(const ExponentialContactForce& source);
 
     /** Move constructor. Use this constructor to transfer deep ownership
     of the underlying Simbody contact force from the source to a new instance
@@ -340,7 +340,7 @@ public:
     instance, and the pointer in the source instance is set to `nullptr`.
 
     @param source rvalue reference to the source object to be copied. */
-    ExponentialContactForce(ExponentialContactForce&& source) noexcept;
+    //ExponentialContactForce(ExponentialContactForce&& source) noexcept;
 
     /** Construct an ExponentialContactForce instance.
     @param X_GP Transform specifying the location and orientation of the
@@ -359,7 +359,7 @@ public:
         SimTK::ExponentialSpringParameters());
 
     /** Destructor. */
-    ~ExponentialContactForce();
+    //~ExponentialContactForce();
 
     //-------------------------------------------------------------------------
     // Utility
@@ -407,7 +407,7 @@ public:
     /** Get a pointer to the SimTK::Subsystem from which this
     ExponentialContactForce instance allocates its discrete states. */
     const SimTK::Subsystem* getSubsystem() const {
-        return &_spr->getForceSubsystem();
+        return &getSprRef().getForceSubsystem();
     }
 
     /** Get the name used for the discrete state representing the static
@@ -654,7 +654,9 @@ private:
 
     void setNull();
     void constructProperties();
-    SimTK::ExponentialSpringForce* _spr{nullptr};
+    const SimTK::ExponentialSpringForce& getSprRef() const;
+    SimTK::ExponentialSpringForce& updSprRef();
+    //SimTK::ExponentialSpringForce* _spr{nullptr};
 
 }; // END of class ExponentialContactForce
 
