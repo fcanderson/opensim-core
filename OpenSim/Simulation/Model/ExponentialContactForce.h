@@ -305,43 +305,6 @@ public:
     the OpenSim Model is built. */
     ExponentialContactForce();
 
-    /** Copy constructor. This copy is shallow. The OpenSim Properties and
-    socket connections of the constructed instance are made equal to the
-    properties of the source instance; however, the value of the pointer to
-    the underlying SimTK::ExponentialSpringForce in the constructed instance
-    is left as null. This policy avoids double deletion of the memory
-    block owned by the source instance.
-    @param source Const reference to the source object to be copied. */
-    //ExponentialContactForce(const ExponentialContactForce& source);
-
-    /** Copy assignment operator. This operator is shalow. In no case is the
-    value of the underlying SimTK::ExponentialSpringForce pointer in the
-    calling instance assigned to the value of the pointer in the source
-    instance. Also in no case is the body station or socket connection of the
-    calling instance altered. The contact plane transform of the calling
-    instance is assigned to the transform of the source instance only prior
-    to Model::buildSystem() being called. In all cases, however, the contact
-    properties (elasticity, viscosity, etc.) of the calling instance are
-    assigned to the properties of the source instance. Using this operator
-    will reset the stage of the SimTK::System to SimTK::Stage::Topology.
-    @param source Const reference to the source to which to assign. */
-    //ExponentialContactForce& operator=(const ExponentialContactForce& source);
-
-    /** Move constructor. Use this constructor to transfer deep ownership
-    of the underlying Simbody contact force from the source to a new instance
-    of ExponentialContactForce. Apt scenarios in which this move constructor
-    should be used include returning an ExponentialContactForce from a method
-    and storing ExponentialContactForce objects in STL-like containters
-    (e.g., std::vector<>).
-
-    The OpenSim Properties of the constructed instance are made equal to the
-    properties of the source instance. The value of the underlying Simbody
-    force pointer (SimTK::ExponentialSpringForce) is moved to the constructed
-    instance, and the pointer in the source instance is set to `nullptr`.
-
-    @param source rvalue reference to the source object to be copied. */
-    //ExponentialContactForce(ExponentialContactForce&& source) noexcept;
-
     /** Construct an ExponentialContactForce instance.
     @param X_GP Transform specifying the location and orientation of the
     contact plane frame (P) with respect to the Ground frame (G). The positive
@@ -350,16 +313,15 @@ public:
     operator that transforms a point of P (point_P) to that same point in
     space but measured from the Ground origin (G₀) and expressed in G
     (i.e., point_G = X_GP * point_P).
-    @param station The frame-fixed station at which the force is applied.
+    @param frame The frame in which the station is located.
+    @param location The location of the station in the frame.
     @param params Optional parameters object used to customize the
     topology-stage characteristics of the contact model. */
     explicit ExponentialContactForce(const SimTK::Transform& X_GP,
-        const Station& station,
+        const PhysicalFrame& frame,
+        const SimTK::Vec3& location,
         SimTK::ExponentialSpringParameters params =
         SimTK::ExponentialSpringParameters());
-
-    /** Destructor. */
-    //~ExponentialContactForce();
 
     //-------------------------------------------------------------------------
     // Utility
@@ -407,7 +369,7 @@ public:
     /** Get a pointer to the SimTK::Subsystem from which this
     ExponentialContactForce instance allocates its discrete states. */
     const SimTK::Subsystem* getSubsystem() const {
-        return &getSprRef().getForceSubsystem();
+        return &getExponentialSpringForce().getForceSubsystem();
     }
 
     /** Get the name used for the discrete state representing the static
@@ -645,6 +607,8 @@ private:
     OpenSim_DECLARE_PROPERTY(contact_parameters,
         ExponentialContactForce::Parameters,
         "Customizable topology-stage parameters.");
+    OpenSim_DECLARE_PROPERTY(station, Station,
+        "The station at which the contact force is applied.");
 
     //-------------------------------------------------------------------------
     // SOCKETS
@@ -654,9 +618,8 @@ private:
 
     void setNull();
     void constructProperties();
-    const SimTK::ExponentialSpringForce& getSprRef() const;
-    SimTK::ExponentialSpringForce& updSprRef();
-    //SimTK::ExponentialSpringForce* _spr{nullptr};
+    const SimTK::ExponentialSpringForce& getExponentialSpringForce() const;
+    SimTK::ExponentialSpringForce& updExponentialSpringForce();
 
 }; // END of class ExponentialContactForce
 
