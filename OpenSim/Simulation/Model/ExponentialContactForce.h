@@ -250,6 +250,18 @@ ecf->setName("myExponentialContactForce");
 model.addForce(ecf);
 \endcode
 
+### Copy Constructor, Move Constructor, and the Copy Assignment Operator
+
+The copy constructor, move constructor, and copy assignment operator are all
+compiler-generated. As such, they will copy or move member variables,
+OpenSim properties, and OpenSim sockets in cannonical ways. In general, these
+methods can be called at any time before the OpenSim::Model is built. Once the
+Model is built, however, certain operations will fail. In particular, using
+the assignment operator on an ExponentialContactForce instance after the Model
+is built will cause an exception to be thrown because the needed resources
+for connecting the Station socket properly do not exist in the left-hand side
+object.
+
 ### Customizable Parameters
 
 Customizable Topology-stage parameters specifying the characteristics of the
@@ -321,7 +333,8 @@ public:
     /** Default constructor. Construct an instance with default values for
     the contact plane transform, body station, and contact parameters. Note
     that the underlying SimTK::ExponentialSpringForce is not constructed until
-    the OpenSim Model is built. */
+    the OpenSim Model is built. This constructor is relied upon when
+    deserializing from a .osim model file. */
     ExponentialContactForce();
 
     /** Construct an ExponentialContactForce instance.
@@ -349,7 +362,7 @@ public:
     coincides with the projection of the body station onto the contact
     plane. This step is often needed at the beginning of a simulation to
     ensure that a simulation does not begin with large friction forces.
-    After this call, the elastic portion of the friction force should be 0.0
+    After this call, the elastic portion of the friction force should be 0.0.
     Calling this method will invalidate the System at Stage::Dynamics.
     @param state State object on which to base the reset. */
     void resetAnchorPoint(SimTK::State& state) const;
@@ -375,7 +388,7 @@ public:
     /** Set the customizable Topology-stage spring parameters.
     Calling this method will invalidate the SimTK::System at
     Stage::Toplogy and, thus, require the SimTK::System to be re-realized
-    before simulation or analysis can be resumed. */
+    to Stage::Model before simulation or analysis can be resumed. */
     void setParameters(const SimTK::ExponentialSpringParameters& params);
     /** Get the customizable topology-stage spring parameters. Use the copy
     constructor or the assignment operator on the returned reference to create
@@ -402,14 +415,14 @@ public:
     State object. Unlike the parameters managed by
     SimTK::ExponentialSpringParameters, μₛ can be set at any time during a
     simulation. A change to μₛ will invalidate the System at Stage::Dynamics,
-    but not at Stage::Topology.
+    but not Stage::Topology.
     @param state State object that will be modified.
     @param mus %Value of the static coefficient of friction. No upper bound.
     0.0 ≤ μₛ. If μₛ < μₖ, μₖ is set equal to μₛ. */
     void setMuStatic(SimTK::State& state, SimTK::Real mus);
 
-    /** Get the static coefficient of friction (μₛ) held by the specified
-    state for this exponential contact instance.
+    /** Get the static coefficient of friction (μₛ) for this exponential
+    contact instance held by the specified state.
     @param state State object from which to retrieve μₛ. */
     SimTK::Real getMuStatic(const SimTK::State& state) const;
 
@@ -429,8 +442,8 @@ public:
     0.0 ≤ μₖ. If μₖ > μₛ, μₛ is set equal to μₖ. */
     void setMuKinetic(SimTK::State& state, SimTK::Real muk);
 
-    /** Get the kinetic coefficient of friction (μₖ) held by the specified
-    state for this exponential contact instance.
+    /** Get the kinetic coefficient of friction (μₖ) for this exponential
+    contact instance held by the specified state.
     @param state State object from which to retrieve μₖ. */
     SimTK::Real getMuKinetic(const SimTK::State& state) const;
 
@@ -606,7 +619,7 @@ protected:
     /** Connect to the OpenSim Model. */
     void extendConnectToModel(Model& model) override;
 
-    /** Create a SimTK::ExponentialSpringForce object that implements
+    /** Create the SimTK::ExponentialSpringForce object that implements
     this Force. */
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
 
@@ -670,7 +683,7 @@ properties are update to match parameters.
 To change the values of individual parameters programmatically:
 ```
     // Get a modifiable copy of the underlying parameter object
-    // (`exp_contact` is a instance of ExponentialContactForce)
+    // (`exp_contact` is an instance of ExponentialContactForce)
     SimTK::ExponentialSpringParameters p = exp_contact.getParameters();
 
     // Make the desired changes to the copy using the appropropriate setters
