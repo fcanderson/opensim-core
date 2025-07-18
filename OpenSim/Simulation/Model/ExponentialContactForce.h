@@ -206,35 +206,46 @@ ṗ₀ → 0.0, Sliding → 0.0.
 
 ### Usage
 
-Constructing an ExponentialContactForce instance requires a Station in the model
-and a SimTK::Transform that defines the contact plane. Upon construction, the
-Station is connected to the ExponentialContactForce internally via a Socket.
+To construct an ExponentialContactForce instance, supply 1) a transform, which
+specifies the orientation and position of the contact plane in the ground
+frame, 2) a frame, which specifies the body on which the contact force will
+act, and 3) a location, which specifies the point, expressed in the local body
+frame, at which the contact force will be applied.
+
+Note that during construction, a station is generated internally as a
+subcomponent of the ExponentialContactForce instance and connected to the
+body frame via a Socket.
 
 \code{.cpp}
-// Create a Station and add it as a subcomponent of its PhysicalFrame.
-const PhysicalFrame& frame = model->getComponent<PhysicalFrame>("/path/to/frame");
-Station* station = new Station(frame, SimTK::Vec3(0.1, 0.2, 0.3));
-station->setName("myStation");
-frame.addComponent(station);
-
-// Define the contact plane transform.
+// Step 1: Define the contact plane transform.
+// The following transform rotates about the x-axis by -90 degrees so that
+// the positive z-axis of the contact plane (i.e., the normal direction)
+// aligns with the positive y-axis of the ground frame, which is up in OpenSim.
 Rotation rotation(-SimTK::Pi/2.0, XAxis);
 Transform transform(rotation, SimTK::Vec3(0.));
 
+// Step 2: Obtain the PhysicalFrame on which the force will act.
+const PhysicalFrame& frame =
+model->getComponent<PhysicalFrame>("/path/to/body/frame");
+
+// Step 3: Specify the body-local location at which the force will be applied.
+SimTK::Vec3 location(0.1, 0.2, 0.3);
+
 // Create the ExponentialContactForce instance and add it to the model.
-auto* ecf = new OpenSim::ExponentialContactForce(transform, *station);
+auto* ecf = new OpenSim::ExponentialContactForce(transform, frame, location);
 ecf->setName("myExponentialContactForce");
 model.addForce(ecf);
 \endcode
 
-The default contact parameters can be modified via a third, optional argument
-to the convienience constructor. See "Customizable Parameters" below for more
-details on how to customize the parameters of an ExponentialContactForce.
+The default contact parameters can be modified via a fourth, optional argument
+to the constructor. See "Customizable Parameters" below for details on how
+to customize the parameters of an ExponentialContactForce.
 
 \code{.cpp}
 SimTK::ExponentialSpringParameters myParams;
 myParams.setNormalViscosity(0.25);
-auto* ecf = new OpenSim::ExponentialContactForce(transform, *station, myParams);
+auto* ecf = new
+    OpenSim::ExponentialContactForce(transform, frame, location, myParams);
 ecf->setName("myExponentialContactForce");
 model.addForce(ecf);
 \endcode
@@ -246,26 +257,34 @@ exponential spring are managed using SimTK::ExponentialSpringParameters.
 To customize any of the Topology-stage parameters on an ExponentialContactForce
 instance, you should
 
-1) Create an ExponentialSpringParameters object. For example,
+1) Create an ExponentialSpringParameters object. This object will come with
+parameter that are suitable for simulating contact in typical situations
+(e.g., foot contact during gait).
 
-        SimTK::ExponentialSpringParameters myParams;
+\code{.cpp}
+SimTK::ExponentialSpringParameters myParams;
+\endcode
 
-2) Use the available 'set' methods in ExponentialSpringParamters to change
-the parameters of that object. For example,
+2) Use any of the available 'set' methods in ExponentialSpringParamters to
+change the parameters of that object. For example,
 
-        myParams.setNormalViscosity(0.25);
+\code{.cpp}
+myParams.setNormalViscosity(0.25);
+\endcode
 
 3) Use ExponentialContactForce::setParameters() to alter the parameters of one
 (or many) ExponentialContactForce instances. For example,
 
-        SimTK::ExponentialContactForce spr1, spr2;
-        spr1.setParameters(myParams);
-        spr2.setParameters(myParams);
+\code{.cpp}
+SimTK::ExponentialContactForce spr1, spr2;
+spr1.setParameters(myParams);
+spr2.setParameters(myParams);
+\endcode
 
 4) Realize the system to Stage::Topology. When a new set of parameters is
 set on an ExponentialContactForce instance, as above in step 3, the System
 will be invalidated at Stage::Topology. The System must therefore be realized
-at Stage::Topology (and hence Stage::Model) before a simulation can proceed.
+at Stage::Topology (and hence at Stage::Model) before a simulation can proceed.
 
         system.realizeTopology();
 
