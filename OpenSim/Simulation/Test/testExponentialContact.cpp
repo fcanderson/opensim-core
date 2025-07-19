@@ -9,6 +9,7 @@
 *                                                                            *
 * Copyright (c) 2025 Stanford University and the Authors                     *
 * Author(s): F. C. Anderson                                                  *
+* Contributor(s): Nicholas Bianco 									         *
 *                                                                            *
 * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
 * not use this file except in compliance with the License. You may obtain a  *
@@ -68,11 +69,6 @@ using std::vector;
 class ExponentialContactTester
 {
 public:
-    // Contact choices
-    enum ContactChoice {
-        Exp = 0
-    };
-
     // Initial condition choices
     enum InitialConditionsChoice{
         Static = 0,
@@ -86,6 +82,7 @@ public:
 
     // Constructor
     ExponentialContactTester() {
+        // Default body stations on the block
         corner[0] = Vec3( hs, -hs,  hs);
         corner[1] = Vec3( hs, -hs, -hs);
         corner[2] = Vec3(-hs, -hs, -hs);
@@ -105,15 +102,10 @@ public:
         // If the model still owns its components, the following deletes should
         // not be called. On the other hand, if all components are disowned,
         // they must be individually deleted.
-        /*
-        if (blockEC) delete blockEC;
-        if (blockHC) delete blockHC;
-        for (int i = 0; i < n; i++) {
-        if (sprEC[i]) delete sprEC[i];
-        if (sprHC[i]) delete sprHC[i];
-        if (geomHC[i]) delete geomHC[i];
-        }
-        */
+        //if (blockEC) delete blockEC;
+        //for (int i = 0; i < n; i++) {
+        //if (sprEC[i]) delete sprEC[i];
+        //}
     }
 
     // Utility
@@ -136,18 +128,20 @@ public:
     double tf{5.0};
     const static int n{8};
     const double hs{0.10}; // half of a side of a cube (like a radius)
+    const Vec3 defaultFloorOrigin{ Vec3(0., -0.004, 0.) };
+    const Rotation
+        defaultFloorRot{ Rotation(-convertDegreesToRadians(90.0), XAxis) };
     Vec3 corner[n];
     // Command line options and their defaults
-    ContactChoice whichContact{Exp};
     InitialConditionsChoice whichInit{Slide};
     bool noDamp{false};
     // Model and parts
     Model* model{nullptr};
     OpenSim::Body* blockEC{nullptr};
     OpenSim::ExponentialContactForce* sprEC[n]{nullptr};
-    // Expected simulation results for running the Simulation test case.
-    // Depending on the platform (e.g,. Windows, Linux, MacOS), the actual
-    // values may be less than or equal to the expected values.
+    // Expected simulation steps for running the Simulation test case.
+    // Caution: trys and steps may depend on the operating system
+    // (e.g., Windows, Linux, MacOS).
     static const int expectedTrys{1817};
     static const int expectedSteps{1247};
 
@@ -171,8 +165,7 @@ buildModel()
     blockEC = addBlock("EC");
     addExponentialContact(blockEC);
 
-    // Reporters
-    // StatesTrajectory
+    // StatesTrajectory Reporter
     statesReporter = new StatesTrajectoryReporter();
     statesReporter->setName("states_reporter");
     statesReporter->set_report_time_interval(0.1);
@@ -210,10 +203,9 @@ addExponentialContact(OpenSim::Body* block)
     Ground& ground = model->updGround();
 
     // Contact Plane Transform
-    Real angle = convertDegreesToRadians(90.0);
-    Rotation floorRot(-angle, XAxis);
-    Vec3 floorOrigin(0., -0.004, 0.);
-    Transform floorXForm(floorRot, floorOrigin);
+    // The default floor rotation and postion are constants specified in
+    // ExponentialContactTester declaration.
+    Transform floorXForm(defaultFloorRot, defaultFloorOrigin);
 
     // Contact Parameters
     SimTK::ExponentialSpringParameters params;  // yields default params
@@ -222,7 +214,6 @@ addExponentialContact(OpenSim::Body* block)
         params.setFrictionViscosity(0.0);
         params.setInitialMuStatic(0.0);
     }
-
 
     // Place a spring at each of the 8 corners
     std::string name = "";
@@ -348,9 +339,9 @@ TEST_CASE("Simulation")
     tester.whichInit = ExponentialContactTester::SpinSlide;
     tester.setInitialConditions(state, tester.blockEC->getMobilizedBody(), dz);
 
-    // Reset the elastic anchor point for each ExponentialContactForce instance
-    // Resetting the anchor points moves the anchor point directly below the
-    // body station of the block. So, initially, there will be no elastic
+    // Reset the elastic anchor point for each contact instance.
+    // Resetting the anchor points moves the anchor point directly below its
+    // body station on the block. So, initially, there will be no elastic
     // friction force acting on the block.
     ExponentialContactForce::resetAnchorPoints(*tester.model, state);
 
@@ -368,7 +359,6 @@ TEST_CASE("Simulation")
     // Output
     int trys = manager.getIntegrator().getNumStepsAttempted();
     int steps = manager.getIntegrator().getNumStepsTaken();
-    //printConditions();
     cout << "           trys:  " << trys << endl;
     cout << "          steps:  " << steps << endl;
     cout << "       cpu time:  " << runTime << " msec" << endl;
@@ -551,14 +541,14 @@ TEST_CASE("Discrete State Accessors")
 
     // Sliding
     // Note that the "sliding" state is an auto-update discrete state and so
-    // it is not settable. It is only retrievable. The "sliding" state is
+    // is not settable. It is only retrievable. The "sliding" state is
     // updated by the ExponentialContactForce instance during simulation after
     // each successful integration step.
     // There are bounds (0 <= sliding <= 1.0) that can be checked, however.
-    // In addition, retrieving the sldiing state also requites the state to be
-    // realized to Stage::Dynamics or higher, so we can check that an
-    // exception is thrown if the state is not realized to that stage and
-    // a "get" is attempted.
+    // In addition, retrieving the sldiing state also requires the state to be
+    // realized to Stage::Dynamics or higher, so we can also check that an
+    // exception is thrown if the state is not realized to that stage when a
+    // "get" is attempted.
     state.setTime(0.0); // Resets the system to Stage::Time
     CHECK_THROWS(vali = spr.getSliding(state));
     tester.model->getMultibodySystem().realize(state, SimTK::Stage::Dynamics);
@@ -589,31 +579,25 @@ TEST_CASE("Discrete State Accessors")
 // Test that the contact plane property of an ExponentialContactForce instance
 // can be set and retrieved properly. This property, along with the properties
 // encapsulated in the ExponentialContactForce::Parameters class (see below),
-// are is needed to construct an ExponentialContactForce instance. The
-// ExponentialContactForce::Parameters are tested below in the test case
+// is needed to construct an ExponentialContactForce instance.
+// The ExponentialContactForce::Parameters are tested below in the test case
 // "Spring Parameters".
 TEST_CASE("Contact Plane Transform")
 {
-    // Create the tester and build the tester model.
+    // Create the tester and build the model.
     ExponentialContactTester tester;
     CHECK_NOTHROW(tester.buildModel());
     CHECK_NOTHROW(tester.model->buildSystem());
 
-    // Default Contact Plane Transform
-    Real angle = convertDegreesToRadians(90.0);
-    Rotation floorRot(-angle, XAxis);
-    Vec3 floorOrigin(0., -0.004, 0.);
-    Transform floorXForm(floorRot, floorOrigin);
-
     // Check the accessor.
     SimTK::Transform xformf = tester.sprEC[0]->getContactPlaneTransform();
-    CHECK(xformf.p() == floorXForm.p());
-    CHECK(xformf.R() == floorXForm.R());
+    CHECK(xformf.p() == tester.defaultFloorOrigin);
+    CHECK(xformf.R() == tester.defaultFloorRot);
 }
 
 
-// Test that the underlying spring parameters of an ExponentialContactForce instance
-// can be set and retrieved properly. In addition, verify that the
+// Test that the underlying spring parameters of an ExponentialContactForce
+// instance can be set and retrieved properly. In addition, verify that the
 // corresponding OpenSim properties and the underlying parameters that belong
 // to the SimTK::ExponentialSpringForce instance are kept consistent with
 // one another.
@@ -629,12 +613,12 @@ TEST_CASE("Spring Parameters")
         CHECK_NOTHROW( tester.sprEC[i]->assertPropertiesAndParametersEqual() );
     }
 
-    // Pick a contact instance to manipulate.
+    // Pick a contact force instance to manipulate.
     ExponentialContactForce& spr = *tester.sprEC[0];
 
-    // Save the starting parameters.
-    // Note that pi is not a reference. The underlying parameters of spr can
-    // be changed without affecting pi.
+    // Save the initial parameters.
+    // Note that pi is not a reference to a set of parameters, but an
+    // independent copy of parameters of the contact force instance.
     const SimTK::ExponentialSpringParameters pi = spr.getParameters();
 
     // Create a copy of the parameters that will be systematically modified.
@@ -679,7 +663,7 @@ TEST_CASE("Spring Parameters")
     CHECK(df[2] == di[2] + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Normal Viscosity
@@ -691,7 +675,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Max Normal Force
@@ -701,7 +685,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Settle Velocity
@@ -711,7 +695,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Friction Elasticity
@@ -721,7 +705,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Friction Viscosity
@@ -730,7 +714,7 @@ TEST_CASE("Spring Parameters")
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Settle Velocity
@@ -740,7 +724,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Initial Static Coefficient of Friction
@@ -750,7 +734,7 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali + delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Initial Kinetic Coefficient of Friction
@@ -760,26 +744,26 @@ TEST_CASE("Spring Parameters")
     CHECK(valf == vali - delta);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Make a change to mus that should also change muk
     double musi = pi.getInitialMuStatic();
     double muki = pi.getInitialMuKinetic();
-    pf.setInitialMuStatic(muki - delta);  // should enforce muk <= mus
+    pf.setInitialMuStatic(muki - delta);  // this should enforce muk <= mus
     double musf = pf.getInitialMuStatic();
     double mukf = pf.getInitialMuKinetic();
     CHECK(musf == muki - delta);
     CHECK(mukf == musf);
     spr.setParameters(pf);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
-    spr.setParameters(pi); // now back to original
+    spr.setParameters(pi);
     CHECK_NOTHROW( spr.assertPropertiesAndParametersEqual() );
 
     // Make a change to musk that should also change mus
     musi = pi.getInitialMuStatic();
     muki = pi.getInitialMuKinetic();
-    pf.setInitialMuKinetic(musi + delta);  // should enforce mus >= musk
+    pf.setInitialMuKinetic(musi + delta);  // this should enforce mus >= musk
     musf = pf.getInitialMuStatic();
     mukf = pf.getInitialMuKinetic();
     CHECK(mukf == musi + delta);
@@ -842,7 +826,7 @@ TEST_CASE("Construction")
     frc2->setName("ExpFrc2");
     model->addForce(frc2);
 
-    // All properties, except for the station, should be copied/assigned
+    // All properties, except for the station, can be copied/assigned
     // because none of the contact forces wrap an instantiated
     // ExponentialSpringForce.
     ExponentialContactForce* frc1Copy = new ExponentialContactForce(*frc1);
@@ -851,7 +835,7 @@ TEST_CASE("Construction")
     CHECK(frc1Copy->getContactPlaneTransform() == floorXForm1);
 
     // Copy Assignment
-    // All properties and the station should be assigned because frcDefault
+    // All properties and the station can be assigned because frcDefault
     // doesn't wrap an instantiated SimTK::ExponentialSpringForce.
     ExponentialContactForce* frcDefault = new ExponentialContactForce();
     CHECK(frcDefault->getParameters().getFrictionElasticity() == elasticity0);
@@ -862,12 +846,13 @@ TEST_CASE("Construction")
     CHECK(frcDefault->getContactPlaneTransform() == floorXForm1);
     delete frcDefault;
 
-    // TODO: We cannot copy assign after the springs have been added to the model
-    // because this breaks the Station socket connection.
+    // TODO: We cannot copy assign after the underlying ExponentialSpringForce
+    // instances have been added to the model because the compiler-generated
+    // assignment does not properly establish the Station socket connection.
     // Copy assignment when the springs have been added to the model
-    // *frc1 = *frc2;
-    // CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
-    // CHECK(frc1->getContactPlaneTransform() == floorXForm2);
+    //*frc1 = *frc2;
+    //CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
+    //CHECK(frc1->getContactPlaneTransform() == floorXForm2);
 
     // Build the system
     model->buildSystem();
@@ -923,8 +908,9 @@ TEST_CASE("Construction")
 }
 
 
-/* This is not currently used in the test suite, but it is a good example of
-// how to set/get discrete variables at a low level.
+/* The following code is not currently used in the test suite, but it is a
+// good example of how to set/get discrete variables at a low level, which
+// may be useful if deeper testing is warranted.
 
 // The only types that are handled are double and Vec3 at this point.
 // The significant changes in how Discrete Variables are handled are:
