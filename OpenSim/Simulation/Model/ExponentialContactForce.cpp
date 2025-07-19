@@ -382,13 +382,15 @@ getSliding(const SimTK::State& state) const {
 Vec3
 ExponentialContactForce::
 getNormalForceElasticPart(const State& state, bool inGround) const {
-    return getExponentialSpringForce().getNormalForceElasticPart(state, inGround);
+    return
+        getExponentialSpringForce().getNormalForceElasticPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getNormalForceDampingPart(const State& state, bool inGround) const {
-    return getExponentialSpringForce().getNormalForceDampingPart(state, inGround);
+    return
+        getExponentialSpringForce().getNormalForceDampingPart(state, inGround);
 }
 
 Vec3
@@ -406,19 +408,22 @@ getMu(const State& state) const {
 Real
 ExponentialContactForce::
 getFrictionForceLimit(const SimTK::State& state) const {
-    return getExponentialSpringForce().getFrictionForceLimit(state);
+    return getExponentialSpringForce().
+                getFrictionForceLimit(state);
 }
 
 Vec3
 ExponentialContactForce::
 getFrictionForceElasticPart(const State& state, bool inGround) const {
-    return getExponentialSpringForce().getFrictionForceElasticPart(state, inGround);
+    return getExponentialSpringForce().
+                getFrictionForceElasticPart(state, inGround);
 }
 
 Vec3
 ExponentialContactForce::
 getFrictionForceDampingPart(const State& state, bool inGround) const {
-    return getExponentialSpringForce().getFrictionForceDampingPart(state, inGround);
+    return getExponentialSpringForce().
+                getFrictionForceDampingPart(state, inGround);
 }
 
 Vec3
