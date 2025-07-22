@@ -150,15 +150,15 @@ ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
     set_contact_plane_transform(contactPlaneXform);
 
     // Create a Station object and set the station property.
-    Station station(frame, location);
-    set_station(station);
-    // Finalize recognizes the station as the ExponentialContactForce's
-    // subcomponent.
-    finalizeFromProperties();
-    // Connect the station socket.
-    upd_station().updSocket<PhysicalFrame>("parent_frame").setConnecteePath(
-        frame.getAbsolutePathString());
-    connectSocket_station(upd_station());
+    set_station(Station());
+    upd_station().setParentFrame(frame);
+    upd_station().set_location(location);
+    // // Finalize recognizes the station as the ExponentialContactForce's
+    // // subcomponent.
+    // finalizeFromProperties();
+    // // Connect the station socket.
+    // connectSocket_station(upd_station());
+
     setParameters(params);
 }
 
@@ -207,8 +207,7 @@ extendConnectToModel(OpenSim::Model& model) {
     Super::extendConnectToModel(model);
 
     // The station should not be connected to Ground.
-    const PhysicalFrame& frame =
-            getConnectee<Station>("station").getParentFrame();
+    const PhysicalFrame& frame = get_station().getParentFrame();
     OPENSIM_THROW_IF(&frame == &model.getGround(), Exception,
         "The station must be connected to a PhysicalFrame that is not Ground.")
 }
@@ -225,9 +224,8 @@ extendAddToSystem(SimTK::MultibodySystem& system) const {
     // Construct the SimTK::ExponentialSpringForce object
     SimTK::GeneralForceSubsystem& forces = _model->updForceSubsystem();
     const SimTK::Transform& XContactPlane = get_contact_plane_transform();
-    const Station& station = getConnectee<Station>("station");
-    const PhysicalFrame& frame = station.getParentFrame();
-    const Vec3& location = station.get_location();
+    const PhysicalFrame& frame = get_station().getParentFrame();
+    const Vec3& location = get_station().get_location();
     SimTK::ExponentialSpringForce spr(forces, XContactPlane,
             frame.getMobilizedBody(), location, getParameters());
 
@@ -341,6 +339,12 @@ const SimTK::ExponentialSpringParameters&
 ExponentialContactForce::
 getParameters() const {
     return get_contact_parameters().getSimTKParameters();
+}
+
+const Station&
+ExponentialContactForce::
+getStation() const {
+    return get_station();
 }
 
 //-----------------------------------------------------------------------------
@@ -464,8 +468,7 @@ ExponentialContactForce::
 getRecordLabels() const {
     OpenSim::Array<std::string> labels("");
     string name = getName();  // Name of this contact instance.
-    std::string frameName =
-            getConnectee<Station>("station").getParentFrame().getName();
+    std::string frameName = get_station().getParentFrame().getName();
     std::string groundName = getModel().getGround().getName();
 
     // Record format consistent with HuntCrossleyForce.
@@ -505,7 +508,7 @@ getRecordValues(const SimTK::State& state) const  {
     // Body
     SimTK::Vec3 force;
     SimTK::Vec3 torque;
-    const auto& bodyIndex = getConnectee<Station>("station").getParentFrame()
+    const auto& bodyIndex = get_station().getParentFrame()
             .getMobilizedBodyIndex();
     SimTK::SpatialVec& bodyForce = bForces(bodyIndex);
     force = bodyForce[1];

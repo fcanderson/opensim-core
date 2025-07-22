@@ -423,8 +423,8 @@ TEST_CASE("Model Serialization")
             CHECK(ec1.getContactPlaneTransform() ==
                     ec0.getContactPlaneTransform());
 
-            const Station& s0 = ec0.getConnectee<Station>("station");
-            const Station& s1 = ec1.getConnectee<Station>("station");
+            const Station& s0 = ec0.getStation();
+            const Station& s1 = ec1.getStation();
             CHECK(s0.getParentFrame().getAbsolutePathString() ==
                   s1.getParentFrame().getAbsolutePathString());
             CHECK(s0.get_location() == s1.get_location());
@@ -485,8 +485,8 @@ TEST_CASE("Model Serialization")
             CHECK(ec2.getContactPlaneTransform() ==
                 ec0.getContactPlaneTransform());
 
-            const Station& s0 = ec0.getConnectee<Station>("station");
-            const Station& s2 = ec2.getConnectee<Station>("station");
+            const Station& s0 = ec0.getStation();
+            const Station& s2 = ec2.getStation();
             CHECK(s0.getParentFrame().getAbsolutePathString() ==
                   s2.getParentFrame().getAbsolutePathString());
             CHECK(s0.get_location() == s2.get_location());
@@ -848,11 +848,11 @@ TEST_CASE("Construction")
 
     // TODO: We cannot copy assign after the underlying ExponentialSpringForce
     // instances have been added to the model because the compiler-generated
-    // assignment does not properly establish the Station socket connection.
+    // assignment breaks the Station's Socket connection to the PhysicalFrame.
     // Copy assignment when the springs have been added to the model
-    //*frc1 = *frc2;
-    //CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
-    //CHECK(frc1->getContactPlaneTransform() == floorXForm2);
+    // *frc1 = *frc2;
+    // CHECK(frc1->getParameters().getFrictionElasticity() == elasticity2);
+    // CHECK(frc1->getContactPlaneTransform() == floorXForm2);
 
     // Build the system
     model->buildSystem();

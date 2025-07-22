@@ -212,9 +212,8 @@ frame, 2) a frame, which specifies the body on which the contact force will
 act, and 3) a location, which specifies the point, expressed in the local body
 frame, at which the contact force will be applied.
 
-Note that during construction, a station is generated internally as a
-subcomponent of the ExponentialContactForce instance and connected to the
-body frame via a Socket.
+Note that during construction, a Station is generated internally as a
+subcomponent of the ExponentialContactForce instance.
 
 \code{.cpp}
 // Step 1: Define the contact plane transform.
@@ -394,6 +393,11 @@ public:
     constructor or the assignment operator on the returned reference to create
     a parameters object that can be modified. */
     const SimTK::ExponentialSpringParameters& getParameters() const;
+
+    /** Get the Station that is connected to the body frame and at which the
+    contact force is applied. The Station is a subcomponent of this
+    ExponentialContactForce instance. */
+    const Station& getStation() const;
 
     //-------------------------------------------------------------------------
     // Accessors for Discrete States
@@ -640,12 +644,6 @@ private:
         ExponentialContactForce::Parameters,
         "Customizable topology-stage parameters.");
     OpenSim_DECLARE_PROPERTY(station, Station,
-        "The station at which the contact force is applied.");
-
-    //-------------------------------------------------------------------------
-    // SOCKETS
-    //-------------------------------------------------------------------------
-    OpenSim_DECLARE_SOCKET(station, Station,
         "The station at which the contact force is applied.");
 
     void setNull();
