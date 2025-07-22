@@ -153,11 +153,6 @@ ExponentialContactForce(const SimTK::Transform& contactPlaneXform,
     set_station(Station());
     upd_station().setParentFrame(frame);
     upd_station().set_location(location);
-    // // Finalize recognizes the station as the ExponentialContactForce's
-    // // subcomponent.
-    // finalizeFromProperties();
-    // // Connect the station socket.
-    // connectSocket_station(upd_station());
 
     setParameters(params);
 }
